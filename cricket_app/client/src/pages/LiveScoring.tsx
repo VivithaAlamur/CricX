@@ -738,11 +738,7 @@ export default function LiveScoring() {
             </div>
 
             {/* Action Controls */}
-            {!state.scorerPassword ? (
-                <div className="glass-card flex-center ls-scorer-lock-card">
-                    <p className="ls-scorer-lock-text">Enter Scorer PIN in Setup screen to update scores.</p>
-                </div>
-            ) : needsNextBatter ? (
+            {needsNextBatter ? (
                 <div className="glass-card ls-next-batter-card" style={{ padding: '1.5rem', marginTop: '1rem' }}>
                     <h3 style={{ marginBottom: '1rem', color: 'var(--accent-danger)' }}>
                         {(!state.currentBatter && !state.nonStriker) 
@@ -785,6 +781,10 @@ export default function LiveScoring() {
                         </select>
                         <button type="submit" className="btn btn-primary">Confirm Bowler</button>
                     </form>
+                </div>
+            ) : !state.scorerPassword ? (
+                <div className="glass-card flex-center ls-scorer-lock-card">
+                    <p className="ls-scorer-lock-text">Enter Scorer PIN in Setup screen to update scores.</p>
                 </div>
             ) : (
                 <div className="glass-card ls-actions-card">
