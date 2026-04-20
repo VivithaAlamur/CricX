@@ -1,0 +1,23 @@
+{
+  "name": "cricket-score-pro",
+  "version": "1.0.0",
+  "description": "Premium Live Cricket Scoring Application",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "server": "node server/index.js",
+    "client": "cd client && npm run dev",
+    "build": "cd client && npm install && npm run build",
+    "start": "node server/index.js",
+    "start:online": "concurrently \"node server/index.js\" \"cloudflared tunnel --url http://localhost:3001\""
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.6.2",
+    "concurrently": "^9.2.1",
+    "cors": "^2.8.6",
+    "dotenv": "^17.3.1",
+    "express": "^5.2.1",
+    "helmet": "^8.1.0"
+  }
+}
