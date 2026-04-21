@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { ArrowLeft } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useMatch } from '../store/MatchContext';
 import DetailedScorecard from '../components/DetailedScorecard';
@@ -60,6 +61,14 @@ export default function MatchSummary() {
         navigate('/');
     };
 
+    const handleBack = () => {
+        if (matchId) {
+            navigate('/history');
+            return;
+        }
+        navigate('/');
+    };
+
     // Calculate winner from innings data
     let winner = 'Unknown';
     if (innings.length > 0) {
@@ -77,6 +86,17 @@ export default function MatchSummary() {
     return (
         <div className="flex-col gap-6 msu-shell">
             <div className="glass-panel msu-hero">
+                <div className="msu-back-row">
+                    <button
+                        type="button"
+                        className="btn btn-secondary msu-top-back-btn"
+                        onClick={handleBack}
+                        aria-label="Back"
+                        title="Back"
+                    >
+                        <ArrowLeft size={18} />
+                    </button>
+                </div>
                 <div className="msu-header-row">
                     <div>
                         <h2 className="text-gradient msu-title">

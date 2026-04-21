@@ -65,12 +65,13 @@ export default function Rankings() {
     return (
         <div className="flex-col gap-8" style={{ paddingBottom: '4rem' }}>
             <div className="flex-center flex-col gap-2">
-                <Trophy size={48} color="var(--accent-warning)" className="animate-pulse" />
-                <h1 className="text-gradient" style={{ fontSize: '2.5rem' }}>Player Rankings</h1>
-                <p style={{ color: 'var(--text-muted)' }}>Global leaderboard across all matches</p>
+                <div className="flex-center" style={{ gap: '0.65rem' }}>
+                    <Trophy size={42} color="var(--accent-warning)" className="animate-pulse" />
+                    <h1 className="text-gradient" style={{ fontSize: '2.5rem', margin: 0 }}>Player Rankings</h1>
+                </div>
             </div>
 
-            <div className="grid gap-6" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))' }}>
+            <div className="grid gap-6" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', paddingTop: '0.7rem' }}>
 
                 {/* Batting Leaderboard */}
                 <div className="glass-panel" style={{ padding: '1.5rem' }}>
@@ -80,9 +81,9 @@ export default function Rankings() {
                         </h3>
                         <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>BY TOTAL RUNS</span>
                     </div>
-                    <div className="flex-col gap-3">
+                    <div className="flex-col gap-3 rk-leaderboard-list">
                         {topBatters.map((p, i) => (
-                            <div key={p.id} className="glass-card flex-between" style={{ padding: '0.75rem 1rem', borderLeft: i === 0 ? '4px solid var(--accent-warning)' : '1px solid var(--border-light)' }}>
+                            <div key={p.id} className="glass-card flex-between rk-leaderboard-card" style={{ borderLeft: i === 0 ? '4px solid var(--accent-warning)' : '1px solid var(--border-light)' }}>
                                 <div className="flex gap-4" style={{ alignItems: 'center' }}>
                                     <span style={{ fontWeight: 800, color: i < 3 ? 'var(--accent-warning)' : 'var(--text-muted)', width: '20px' }}>{i + 1}</span>
                                     <div className="flex-col">
@@ -110,12 +111,12 @@ export default function Rankings() {
                         </h3>
                         <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>BY WICKETS</span>
                     </div>
-                    <div className="flex-col gap-3">
+                    <div className="flex-col gap-3 rk-leaderboard-list">
                         {topBowlers.map((p, i) => {
                             const overs = (Math.floor(p.legal_balls_bowled / 6) + (p.legal_balls_bowled % 6) / 10).toFixed(1);
                             const econ = p.legal_balls_bowled > 0 ? (p.runs_conceded / (p.legal_balls_bowled / 6)).toFixed(2) : '0.00';
                             return (
-                                <div key={p.id} className="glass-card flex-between" style={{ padding: '0.75rem 1rem', borderLeft: i === 0 ? '4px solid var(--accent-primary)' : '1px solid var(--border-light)' }}>
+                                <div key={p.id} className="glass-card flex-between rk-leaderboard-card" style={{ borderLeft: i === 0 ? '4px solid var(--accent-primary)' : '1px solid var(--border-light)' }}>
                                     <div className="flex gap-4" style={{ alignItems: 'center' }}>
                                         <span style={{ fontWeight: 800, color: i < 3 ? 'var(--accent-primary)' : 'var(--text-muted)', width: '20px' }}>{i + 1}</span>
                                         <div className="flex-col">

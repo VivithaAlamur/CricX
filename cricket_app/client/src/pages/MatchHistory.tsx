@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { History } from 'lucide-react';
+import { Eye, History, Play, Trash2, Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useMatch, SCORER_SESSION_ID } from '../store/MatchContext';
 
@@ -97,93 +97,104 @@ export default function MatchHistory() {
     };
 
     return (
-        <div className="flex-col gap-6" style={{ maxWidth: '800px', margin: '0 auto' }}>
+        <div className="flex-col gap-6 mh-shell">
             {/* Admin PIN indicator for consistency */}
             {!state.adminPassword && (
-                <div className="glass-panel" style={{ padding: '0.75rem 1.5rem', textAlign: 'center', border: '1px solid var(--accent-danger)' }}>
-                    <p style={{ fontSize: '0.85rem', color: 'var(--accent-danger)' }}>
+                <div className="glass-panel mh-note is-danger">
+                    <p className="mh-note-text">
                         ⚠️ Enter Admin PIN in the sidebar to enable match deletion.
                     </p>
                 </div>
             )}
             {!state.scorerPassword && (
-                <div className="glass-panel" style={{ padding: '0.75rem 1.5rem', textAlign: 'center', border: '1px solid var(--accent-warning)', marginTop: '1rem' }}>
-                    <p style={{ fontSize: '0.85rem', color: 'var(--accent-warning)' }}>
+                <div className="glass-panel mh-note is-warning">
+                    <p className="mh-note-text">
                         ⚠️ Enter Scorer PIN in the sidebar to resume matches.
                     </p>
                 </div>
             )}
 
-            <div className="glass-panel" style={{ padding: '2rem' }}>
-                <h2 className="text-gradient flex-center gap-2" style={{ marginBottom: '1.5rem', textAlign: 'center' }}>
+            <div className="glass-panel mh-panel">
+                <h2 className="text-gradient flex-center gap-2 mh-title">
                     <History size={28} /> Match History
                 </h2>
 
                 {error && (
-                    <div style={{ marginBottom: '1.5rem', padding: '1rem', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid var(--accent-danger)', borderRadius: '8px', color: 'var(--accent-danger)', textAlign: 'center', position: 'relative' }}>
+                    <div className="mh-error">
                         {error}
-                        <button onClick={() => setError(null)} style={{ position: 'absolute', top: '0.5rem', right: '0.5rem', background: 'none', border: 'none', color: 'var(--accent-danger)', cursor: 'pointer' }}>&times;</button>
+                        <button className="mh-error-close" onClick={() => setError(null)}>&times;</button>
                     </div>
                 )}
 
                 {matches.length === 0 ? (
-                    <p style={{ color: 'var(--text-muted)', textAlign: 'center' }}>No historical matches found.</p>
+                    <p className="mh-empty">No historical matches found.</p>
                 ) : (
-                    <div className="flex-col gap-4">
+                    <div className="flex-col gap-4 mh-list">
                         {matches.map(m => (
-                            <div key={m.id} className="glass-card flex-between stack-mobile" style={{ padding: '1.25rem', position: 'relative', overflow: 'hidden' }}>
+                            <div key={m.id} className="glass-card mh-card">
                                 {deleteConfirmId === m.id && (
-                                    <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', zIndex: 10 }}>
-                                        <span style={{ fontWeight: 700, color: 'var(--accent-danger)' }}>Delete Match?</span>
-                                        <button className="btn btn-danger" style={{ padding: '6px 12px', fontSize: '0.8rem' }} onClick={() => handleDelete(m.id)}>Yes, Delete</button>
-                                        <button className="btn btn-secondary" style={{ padding: '6px 12px', fontSize: '0.8rem' }} onClick={() => setDeleteConfirmId(null)}>Cancel</button>
+                                    <div className="mh-delete-overlay">
+                                        <span className="mh-delete-title">Delete Match?</span>
+                                        <button className="btn btn-danger mh-delete-btn" onClick={() => handleDelete(m.id)}>Yes, Delete</button>
+                                        <button className="btn btn-secondary mh-delete-btn" onClick={() => setDeleteConfirmId(null)}>Cancel</button>
                                     </div>
                                 )}
-                                <div className="flex-col gap-1">
-                                    <h3 style={{ fontSize: '1.1rem', marginBottom: '0.25rem' }}>
+                                <div className="mh-card-main">
+                                    <h3 className="mh-scoreline">
                                         {m.team1_name} <span style={{ color: 'var(--accent-primary)' }}>{m.team1_runs || 0}/{m.team1_wickets || 0}</span>
-                                        <span style={{ color: 'var(--text-muted)', margin: '0 0.5rem' }}>vs</span>
+                                        <span className="mh-vs">vs</span>
                                         {m.team2_name} <span style={{ color: 'var(--accent-primary)' }}>{m.team2_runs || 0}/{m.team2_wickets || 0}</span>
                                     </h3>
-                                    <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-                                        {new Date(m.created_at).toLocaleString()} | Status: <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{m.status}</span>
+                                    <p className="mh-meta">
+                                        {new Date(m.created_at).toLocaleString()} | Status: <span className="mh-status">{m.status}</span>
                                         {m.joker_player && (
-                                            <span style={{ marginLeft: '1rem', color: 'var(--accent-warning)', fontWeight: 600 }}>
+                                            <span className="mh-joker">
                                                 🃏 Joker: {m.joker_player}
                                             </span>
                                         )}
                                     </p>
-                                    <div className="flex gap-2" style={{ marginTop: '0.25rem' }}>
+                                </div>
+                                <div className="mh-bottom-row">
+                                    <div className="mh-actions">
                                         <button
+                                            className="btn btn-secondary mh-icon-btn"
                                             onClick={() => setViewSquadsMatch(m)}
-                                            style={{ background: 'none', border: 'none', color: 'var(--accent-success)', fontSize: '0.75rem', cursor: 'pointer', textDecoration: 'underline', padding: 0 }}
+                                            aria-label="View Squads"
+                                            title="View Squads"
                                         >
-                                            View Squads
+                                            <Users size={14} />
+                                        </button>
+                                        {m.status !== 'FINISHED' && (
+                                            <button 
+                                                className="btn btn-primary mh-icon-btn"
+                                                style={{ opacity: state.scorerPassword ? 1 : 0.3, cursor: state.scorerPassword ? 'pointer' : 'not-allowed' }}
+                                                disabled={!state.scorerPassword}
+                                                onClick={() => handleResume(m.id)}
+                                                aria-label="Resume Match"
+                                                title="Resume Match"
+                                            >
+                                                <Play size={14} />
+                                            </button>
+                                        )}
+                                        <button
+                                            className="btn btn-secondary mh-icon-btn"
+                                            onClick={() => navigate(`/history/${m.id}`)}
+                                            aria-label="View Scorecard"
+                                            title="View Scorecard"
+                                        >
+                                            <Eye size={14} />
+                                        </button>
+                                        <button
+                                            className="btn btn-danger mh-icon-btn"
+                                            style={{ opacity: state.adminPassword ? 1 : 0.3, cursor: state.adminPassword ? 'pointer' : 'not-allowed' }}
+                                            disabled={!state.adminPassword}
+                                            onClick={() => setDeleteConfirmId(m.id)}
+                                            aria-label="Delete Match"
+                                            title="Delete Match"
+                                        >
+                                            <Trash2 size={14} />
                                         </button>
                                     </div>
-                                </div>
-                                <div className="flex gap-2" style={{ flexWrap: 'wrap' }}>
-                                    {m.status !== 'FINISHED' && (
-                                        <button 
-                                            className="btn btn-primary" 
-                                            style={{ flex: 1, fontSize: '0.85rem', opacity: state.scorerPassword ? 1 : 0.3, cursor: state.scorerPassword ? 'pointer' : 'not-allowed' }} 
-                                            disabled={!state.scorerPassword}
-                                            onClick={() => handleResume(m.id)}
-                                        >
-                                            Resume
-                                        </button>
-                                    )}
-                                    <button className="btn btn-secondary" style={{ flex: 1, fontSize: '0.85rem' }} onClick={() => navigate(`/history/${m.id}`)}>
-                                        View
-                                    </button>
-                                    <button
-                                        className="btn btn-danger"
-                                        style={{ flex: 1, fontSize: '0.85rem', opacity: state.adminPassword ? 1 : 0.3, cursor: state.adminPassword ? 'pointer' : 'not-allowed' }}
-                                        disabled={!state.adminPassword}
-                                        onClick={() => setDeleteConfirmId(m.id)}
-                                    >
-                                        Delete
-                                    </button>
                                 </div>
                             </div>
                         ))}

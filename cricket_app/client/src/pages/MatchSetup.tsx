@@ -1,7 +1,70 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useMatch } from '../store/MatchContext';
-import { ArrowLeft, RefreshCcw } from 'lucide-react';
+import { ArrowLeft, RefreshCcw, ClipboardList, Users, Flag } from 'lucide-react';
+
+function SetupControlIcon() {
+    return (
+        <svg
+            width="22"
+            height="22"
+            viewBox="0 0 24 24"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            aria-hidden="true"
+            className="ms-setup-title-icon"
+        >
+            <defs>
+                <linearGradient id="setupIconGradient" x1="3" y1="3" x2="21" y2="21" gradientUnits="userSpaceOnUse">
+                    <stop stopColor="#ef4444" />
+                    <stop offset="0.55" stopColor="#a855f7" />
+                    <stop offset="1" stopColor="#0ea5e9" />
+                </linearGradient>
+            </defs>
+
+            <line x1="3" y1="6" x2="21" y2="6" stroke="url(#setupIconGradient)" strokeWidth="2" strokeLinecap="round" />
+            <line x1="3" y1="12" x2="21" y2="12" stroke="url(#setupIconGradient)" strokeWidth="2" strokeLinecap="round" />
+            <line x1="3" y1="18" x2="21" y2="18" stroke="url(#setupIconGradient)" strokeWidth="2" strokeLinecap="round" />
+
+            <circle cx="8" cy="6" r="2.5" fill="#ffffff" stroke="url(#setupIconGradient)" strokeWidth="2" />
+            <circle cx="15" cy="12" r="2.5" fill="#ffffff" stroke="url(#setupIconGradient)" strokeWidth="2" />
+            <circle cx="11" cy="18" r="2.5" fill="#ffffff" stroke="url(#setupIconGradient)" strokeWidth="2" />
+        </svg>
+    );
+}
+
+function ManagePlayersIcon() {
+    return (
+        <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            aria-hidden="true"
+            className="setup-manage-link-icon"
+        >
+            <defs>
+                <linearGradient id="managePlayersIconGradient" x1="3" y1="4" x2="21" y2="20" gradientUnits="userSpaceOnUse">
+                    <stop stopColor="#f59e0b" />
+                    <stop offset="0.55" stopColor="#8b5cf6" />
+                    <stop offset="1" stopColor="#0ea5e9" />
+                </linearGradient>
+            </defs>
+
+            <circle cx="12" cy="8" r="3" fill="#ffffff" stroke="url(#managePlayersIconGradient)" strokeWidth="1.8" />
+            <circle cx="5.5" cy="10" r="2.2" fill="#ffffff" stroke="url(#managePlayersIconGradient)" strokeWidth="1.6" />
+            <circle cx="18.5" cy="10" r="2.2" fill="#ffffff" stroke="url(#managePlayersIconGradient)" strokeWidth="1.6" />
+
+            <path d="M7.2 18.3c.5-2.2 2.5-3.8 4.8-3.8 2.3 0 4.3 1.6 4.8 3.8" stroke="url(#managePlayersIconGradient)" strokeWidth="1.8" strokeLinecap="round" />
+            <path d="M2.9 18.4c.3-1.3 1.5-2.3 2.9-2.3 1.4 0 2.6.9 2.9 2.3" stroke="url(#managePlayersIconGradient)" strokeWidth="1.6" strokeLinecap="round" />
+            <path d="M15.3 18.4c.3-1.3 1.5-2.3 2.9-2.3 1.4 0 2.6.9 2.9 2.3" stroke="url(#managePlayersIconGradient)" strokeWidth="1.6" strokeLinecap="round" />
+
+            <circle cx="18.2" cy="5.6" r="2.1" fill="#ffffff" stroke="url(#managePlayersIconGradient)" strokeWidth="1.4" />
+            <path d="M18.2 4.65v1.9M17.25 5.6h1.9" stroke="url(#managePlayersIconGradient)" strokeWidth="1.2" strokeLinecap="round" />
+        </svg>
+    );
+}
 
 export default function MatchSetup() {
     const { state, dispatch } = useMatch();
@@ -13,7 +76,7 @@ export default function MatchSetup() {
     const [team2Squad, setTeam2Squad] = useState<string[]>([]);
     const [playerFilter, setPlayerFilter] = useState('');
     const [squadView, setSquadView] = useState<'all' | 'team1' | 'team2'>('all');
-    const [oversInput, setOversInput] = useState('20');
+    const [oversInput, setOversInput] = useState('');
     const [noExtraRuns, setNoExtraRuns] = useState(false);
     const [useJoker, setUseJoker] = useState(false);
     const [jokerPlayer, setJokerPlayer] = useState<string | null>(null);
@@ -47,6 +110,7 @@ export default function MatchSetup() {
     const [tossDecision, setTossDecision] = useState<'bat' | 'bowl'>('bat');
     const [isTossing, setIsTossing] = useState(false);
     const [tossResult, setTossResult] = useState<'Heads' | 'Tails' | null>(null);
+    const canPickSquads = !!team1.trim() && !!team2.trim() && !!oversInput.trim() && Number(oversInput) > 0;
 
     const getTeamLabel = (teamName: string, fallback: string) => {
         const trimmed = teamName.trim();
@@ -121,6 +185,11 @@ export default function MatchSetup() {
     };
 
     const assignPlayerTeam = (playerName: string, team: 1 | 2 | null) => {
+        if (!canPickSquads) {
+            setSelectionError('Enter Team 1, Team 2, and Total Overs first.');
+            return;
+        }
+
         if (playerName === jokerPlayer) return;
 
         if (team === 1) {
@@ -163,6 +232,11 @@ export default function MatchSetup() {
     };
 
     const clearSquads = () => {
+        if (!canPickSquads) return;
+
+        const shouldClear = window.confirm('Are you sure you want to reset squad selections?');
+        if (!shouldClear) return;
+
         if (jokerPlayer) {
             setTeam1Squad([jokerPlayer]);
             setTeam2Squad([jokerPlayer]);
@@ -263,60 +337,104 @@ export default function MatchSetup() {
         const team2Label = getTeamLabel(team2, 'Team 2');
         const team1MaxReached = team1Squad.length >= MAX_TEAM_SELECTION;
         const team2MaxReached = team2Squad.length >= MAX_TEAM_SELECTION;
+        const selectedPlayersCount = new Set([...team1Squad, ...team2Squad]).size;
+        const canClearSelection = selectedPlayersCount >= 2;
+        const hasMatchBasics = !!team1.trim() && !!team2.trim() && !!oversInput.trim() && Number(oversInput) > 0;
+        const hasPickSquads = team1Squad.length === MAX_TEAM_SELECTION && team2Squad.length === MAX_TEAM_SELECTION;
+        const hasReadyToToss = !!state.scorerPassword.trim();
+        const hasValidJoker = !useJoker || (!!jokerPlayer && team1Squad.includes(jokerPlayer) && team2Squad.includes(jokerPlayer));
+        const canProceedToToss = hasMatchBasics && hasPickSquads && hasReadyToToss && hasValidJoker;
 
         return (
             <div className="glass-panel custom-scrollbar ms-setup-panel">
                 <div className="setup-topbar ms-setup-topbar">
-                    <h2 className="text-gradient ms-setup-title">Match Setup</h2>
+                    <h2 className="text-gradient ms-setup-title ms-setup-title-wrap">
+                        <SetupControlIcon />
+                        <span>Match Setup</span>
+                    </h2>
                     <Link to="/players" className="setup-manage-link">
-                        Manage players
+                        <ManagePlayersIcon />
+                        <span>Manage Players</span>
                     </Link>
                 </div>
 
                 <form onSubmit={handleSetup} className="flex-col gap-4">
                     <section className="glass-card ms-section">
-                        <h3 className="ms-section-title">1. Match Basics</h3>
+                        <h3 className="ms-section-title ms-heading-with-icon">
+                            <ClipboardList size={18} className="ms-heading-icon" />
+                            <span>Match Basics</span>
+                        </h3>
 
                         <div className="setup-grid">
                             <div className="flex-col gap-2">
-                                <label>Team 1 <span className="ms-required-star">*</span></label>
-                                <input className={showMandatoryNote && fieldErrors.team1 ? 'ms-input-error' : ''} value={team1} onChange={e => setTeam1(e.target.value)} placeholder="e.g. India" />
+                                <label>Team 1 Name <span className="ms-required-star">*</span></label>
+                                <input className={showMandatoryNote && fieldErrors.team1 ? 'ms-input-error' : ''} value={team1} onChange={e => setTeam1(e.target.value)} placeholder="Enter Team Name" />
                             </div>
 
                             <div className="flex-col gap-2">
-                                <label>Team 2 <span className="ms-required-star">*</span></label>
-                                <input className={showMandatoryNote && fieldErrors.team2 ? 'ms-input-error' : ''} value={team2} onChange={e => setTeam2(e.target.value)} placeholder="e.g. Australia" />
+                                <label>Team 2 Name <span className="ms-required-star">*</span></label>
+                                <input className={showMandatoryNote && fieldErrors.team2 ? 'ms-input-error' : ''} value={team2} onChange={e => setTeam2(e.target.value)} placeholder="Enter Team Name" />
                             </div>
                         </div>
 
                         <div className="setup-grid ms-grid-spacer-top">
                             <div className="flex-col gap-2">
                                 <label>Total Overs <span className="ms-required-star">*</span></label>
-                                <input className={showMandatoryNote && fieldErrors.overs ? 'ms-input-error' : ''} type="number" value={oversInput} onChange={e => setOversInput(e.target.value)} min={1} max={100} />
+                                <input className={showMandatoryNote && fieldErrors.overs ? 'ms-input-error' : ''} type="number" value={oversInput} onChange={e => setOversInput(e.target.value)} min={1} max={100} placeholder="Enter Overs" />
                             </div>
 
-                            <div className="flex-col gap-3">
-                                <label className="flex gap-2 ms-check-label ms-check-label-mb">
-                                    <input className="ms-check-input" type="checkbox" checked={noExtraRuns} onChange={e => setNoExtraRuns(e.target.checked)} />
-                                    <span>No extra runs</span>
-                                </label>
+                            <div className="ms-toggle-row">
+                                <div className="ms-toggle-field">
+                                    <label className="ms-toggle-label">No Extra Runs</label>
+                                    <div className="ms-yesno-toggle" role="group" aria-label="No extra runs">
+                                        <button
+                                            type="button"
+                                            className={`ms-yesno-btn ${noExtraRuns ? 'is-active' : ''}`}
+                                            onClick={() => setNoExtraRuns(true)}
+                                            aria-pressed={noExtraRuns}
+                                        >
+                                            Yes
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className={`ms-yesno-btn ${!noExtraRuns ? 'is-active' : ''}`}
+                                            onClick={() => setNoExtraRuns(false)}
+                                            aria-pressed={!noExtraRuns}
+                                        >
+                                            No
+                                        </button>
+                                    </div>
+                                </div>
 
-                                <label className="flex gap-2 ms-check-label">
-                                    <input className="ms-check-input" type="checkbox" checked={useJoker} onChange={e => {
-                                        const checked = e.target.checked;
-                                        setUseJoker(checked);
-
-                                        if (!checked) {
-                                            const currentJoker = jokerPlayer;
-                                            setJokerPlayer(null);
-                                            if (currentJoker) {
-                                                setTeam1Squad(prev => prev.filter(name => name !== currentJoker));
-                                                setTeam2Squad(prev => prev.filter(name => name !== currentJoker));
-                                            }
-                                        }
-                                    }} />
-                                    <span>Joker player (in both teams)</span>
-                                </label>
+                                <div className="ms-toggle-field">
+                                    <label className="ms-toggle-label">Joker Player (in both teams)</label>
+                                    <div className="ms-yesno-toggle" role="group" aria-label="Use joker player">
+                                        <button
+                                            type="button"
+                                            className={`ms-yesno-btn ${useJoker ? 'is-active' : ''}`}
+                                            onClick={() => setUseJoker(true)}
+                                            aria-pressed={useJoker}
+                                        >
+                                            Yes
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className={`ms-yesno-btn ${!useJoker ? 'is-active' : ''}`}
+                                            onClick={() => {
+                                                setUseJoker(false);
+                                                const currentJoker = jokerPlayer;
+                                                setJokerPlayer(null);
+                                                if (currentJoker) {
+                                                    setTeam1Squad(prev => prev.filter(name => name !== currentJoker));
+                                                    setTeam2Squad(prev => prev.filter(name => name !== currentJoker));
+                                                }
+                                            }}
+                                            aria-pressed={!useJoker}
+                                        >
+                                            No
+                                        </button>
+                                    </div>
+                                </div>
 
                                 {useJoker && (
                                     <div className="flex-col gap-2">
@@ -373,7 +491,10 @@ export default function MatchSetup() {
 
                     <section className={`glass-card ms-section ${showMandatoryNote && (fieldErrors.team1Squad || fieldErrors.team2Squad) ? 'ms-section-error' : ''}`}>
                         <div className="flex-between stack-mobile ms-section-header">
-                            <h3>2. Pick Squads <span className="ms-required-star">*</span></h3>
+                            <h3 className="ms-heading-with-icon">
+                                <Users size={18} className="ms-heading-icon" />
+                                <span>Pick Squads <span className="ms-required-star">*</span></span>
+                            </h3>
                         </div>
 
                         <div className="flex gap-2 ms-chip-row">
@@ -381,6 +502,7 @@ export default function MatchSetup() {
                                 type="button"
                                 className={`ms-chip-btn ${squadView === 'all' ? 'is-active-all' : ''}`}
                                 onClick={() => setSquadView('all')}
+                                disabled={!canPickSquads}
                             >
                                 All Players
                             </button>
@@ -389,6 +511,7 @@ export default function MatchSetup() {
                                 type="button"
                                 className={`ms-chip-btn ${squadView === 'team1' ? 'is-active-team1' : ''}`}
                                 onClick={() => setSquadView('team1')}
+                                disabled={!canPickSquads}
                             >
                                 <span
                                     className={team1Label.isTruncated ? 'tooltip-anchor' : ''}
@@ -402,6 +525,7 @@ export default function MatchSetup() {
                                 type="button"
                                 className={`ms-chip-btn ${squadView === 'team2' ? 'is-active-team2' : ''}`}
                                 onClick={() => setSquadView('team2')}
+                                disabled={!canPickSquads}
                             >
                                 <span
                                     className={team2Label.isTruncated ? 'tooltip-anchor' : ''}
@@ -419,6 +543,12 @@ export default function MatchSetup() {
                             </div>
                         )}
 
+                        {!canPickSquads && (
+                            <div className="ms-info-banner">
+                                Enter Team 1, 2 Names, and Total Overs to unlock squad selection.
+                            </div>
+                        )}
+
                         <div className="glass-panel ms-selection-container">
                             <div className="flex ms-selection-toolbar">
                                 <input
@@ -426,14 +556,16 @@ export default function MatchSetup() {
                                     value={playerFilter}
                                     onChange={(e) => setPlayerFilter(e.target.value)}
                                     placeholder="Search player..."
+                                    disabled={!canPickSquads}
                                 />
 
                                 <button
                                     type="button"
                                     className="btn btn-danger tooltip-anchor ms-clear-btn"
                                     onClick={clearSquads}
-                                    data-tooltip="Clear selection"
+                                    data-tooltip={!canPickSquads ? 'Enter team names and overs first' : (canClearSelection ? 'Clear selection' : 'Select at least 2 players')}
                                     aria-label="Clear selection"
+                                    disabled={!canPickSquads || !canClearSelection}
                                 >
                                     <RefreshCcw size={16} />
                                 </button>
@@ -492,7 +624,7 @@ export default function MatchSetup() {
                                                             type="button"
                                                             className={`btn btn-secondary ms-toggle-btn ms-toggle-btn-team1 ${currentValue === 'team1' ? 'is-active' : ''} ${!hasAnySelection ? 'is-idle' : ''} ${disableTeam1ByLock ? 'is-blocked' : ''}`}
                                                             onClick={() => assignPlayerTeam(p.name, 1)}
-                                                            disabled={disableTeam1Option}
+                                                            disabled={!canPickSquads || disableTeam1Option}
                                                             title={team1Label.full}
                                                         >
                                                             {team1Label.short}
@@ -507,7 +639,7 @@ export default function MatchSetup() {
                                                             type="button"
                                                             className={`btn btn-secondary ms-toggle-btn ms-toggle-btn-team2 ${currentValue === 'team2' ? 'is-active' : ''} ${!hasAnySelection ? 'is-idle' : ''} ${disableTeam2ByLock ? 'is-blocked' : ''}`}
                                                             onClick={() => assignPlayerTeam(p.name, 2)}
-                                                            disabled={disableTeam2Option}
+                                                            disabled={!canPickSquads || disableTeam2Option}
                                                             title={team2Label.full}
                                                         >
                                                             {team2Label.short}
@@ -524,7 +656,10 @@ export default function MatchSetup() {
                     </section>
 
                     <section className="glass-card ms-ready-section">
-                        <h3 className="ms-ready-title">3. Ready to Toss</h3>
+                        <h3 className="ms-ready-title ms-heading-with-icon">
+                            <Flag size={18} className="ms-heading-icon" />
+                            <span>Ready to Toss</span>
+                        </h3>
                         <div className="flex-col gap-2 ms-ready-pin-group">
                             <label className="ms-ready-pin-label">Enter Scorer PIN <span className="ms-required-star">*</span></label>
                             <input
@@ -539,7 +674,12 @@ export default function MatchSetup() {
                             />
                         </div>
 
-                        <button type="submit" className="btn btn-primary">
+                        <button
+                            type="submit"
+                            className="btn btn-primary"
+                            disabled={!canProceedToToss}
+                            title={!canProceedToToss ? 'Complete Match Basics, Pick Squads, and Ready to Toss details' : undefined}
+                        >
                             Proceed to Toss
                         </button>
 

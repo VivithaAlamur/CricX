@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { UserPlus, Users, Trash2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ArrowLeft, UserPlus, Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useMatch } from '../store/MatchContext';
 
@@ -32,13 +32,28 @@ export default function PlayerRoster() {
     const [error, setError] = useState('');
     const [isActive, setIsActive] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
-    const [showOnlyActive, setShowOnlyActive] = useState(false);
+    const [showOnlyActive, setShowOnlyActive] = useState(true);
     const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
     const [history, setHistory] = useState<any[]>([]);
     const [loadingHistory, setLoadingHistory] = useState(false);
     const [viewSquadsMatch, setViewSquadsMatch] = useState<any | null>(null);
-    const formRef = useRef<HTMLDivElement>(null);
-    const { state } = useMatch();
+    const [showPlayerFormModal, setShowPlayerFormModal] = useState(false);
+    const { state, dispatch } = useMatch();
+
+    const goBackToMatchSetup = () => {
+        dispatch({ type: 'BACK_TO_SETUP' });
+        navigate('/');
+    };
+
+    const openAddPlayerModal = () => {
+        setEditingPlayerId(null);
+        setFirstName('');
+        setMiddleName('');
+        setLastName('');
+        setIsActive(true);
+        setError('');
+        setShowPlayerFormModal(true);
+    };
 
     const fetchPlayers = async () => {
         try {
@@ -111,7 +126,9 @@ export default function PlayerRoster() {
             setFirstName('');
             setMiddleName('');
             setLastName('');
+            setIsActive(true);
             setEditingPlayerId(null);
+            setShowPlayerFormModal(false);
             fetchPlayers(); // Reload list
         } catch (err) {
             setError('An error occurred');
@@ -145,14 +162,7 @@ export default function PlayerRoster() {
         setLastName(l);
         setIsActive(p.is_active !== 0);
         setError('');
-
-        // Scroll to form
-        if (formRef.current) {
-            window.scrollTo({
-                top: formRef.current.offsetTop - 20,
-                behavior: 'smooth'
-            });
-        }
+        setShowPlayerFormModal(true);
     };
 
     const cancelEdit = () => {
@@ -162,6 +172,7 @@ export default function PlayerRoster() {
         setLastName('');
         setIsActive(true);
         setError('');
+        setShowPlayerFormModal(false);
     };
 
     const togglePlayerActive = async (p: Player) => {
@@ -217,181 +228,155 @@ export default function PlayerRoster() {
         .sort((a, b) => a.name.localeCompare(b.name));
 
     return (
-        <div className="flex-col gap-6" style={{ maxWidth: '800px', margin: '0 auto' }}>
-
-            <div className="glass-panel" style={{ padding: '2rem' }} ref={formRef}>
-                <h2 className="text-gradient flex-center gap-2" style={{ marginBottom: '1.5rem', textAlign: 'center' }}>
-                    <UserPlus size={28} />
-                    {editingPlayerId ? 'Edit Player Details' : 'Add New Player'}
-                </h2>
-                {!editingPlayerId && !state.adminPassword && (
-                    <div className="flex-center" style={{ marginBottom: '1.5rem' }}>
-                        <span style={{ fontSize: '0.75rem', background: 'rgba(76, 175, 80, 0.1)', color: 'var(--accent-success)', padding: '4px 12px', borderRadius: '12px', border: '1px solid rgba(76, 175, 80, 0.3)', fontWeight: 600 }}>
-                            🔓 Public Registration: No PIN Required
-                        </span>
-                    </div>
-                )}
-
-                <form onSubmit={addPlayer} className="flex-col gap-4">
-                    <div className="flex gap-4 stack-mobile" style={{ alignItems: 'flex-end' }}>
-                        <div className="flex-col gap-1" style={{ flex: 1 }}>
-                            <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>First Name</label>
-                            <input
-                                value={firstName}
-                                onChange={(e) => setFirstName(e.target.value)}
-                                placeholder="Virat"
-                                required
-                            />
-                        </div>
-                        <div className="flex-col gap-1" style={{ flex: 1 }}>
-                            <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Middle Name (Optional)</label>
-                            <input
-                                value={middleName}
-                                onChange={(e) => setMiddleName(e.target.value)}
-                                placeholder="Kumar"
-                            />
-                        </div>
-                        <div className="flex-col gap-1" style={{ flex: 1 }}>
-                            <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Last Name</label>
-                            <input
-                                value={lastName}
-                                onChange={(e) => setLastName(e.target.value)}
-                                placeholder="Kohli"
-                                required
-                            />
-                        </div>
-                    </div>
-
-                    <div className="flex gap-4" style={{ marginTop: '1rem' }}>
-                        <button type="submit" className="btn btn-primary" style={{ flex: 1, position: 'relative' }} disabled={editingPlayerId !== null && !state.adminPassword}>
-                            {editingPlayerId ? 'Update Player' : 'Register Player'}
-                        </button>
-                        {editingPlayerId && (
-                            <button type="button" className="btn btn-secondary" style={{ flex: 0.5 }} onClick={cancelEdit}>
-                                Cancel
-                            </button>
-                        )}
-                    </div>
-                    {editingPlayerId !== null && !state.adminPassword && <p style={{ fontSize: '0.8rem', color: 'var(--accent-danger)', textAlign: 'center' }}>Enter Admin PIN in the top right header to enable updating.</p>}
-                </form>
-            </div>
+        <div className="flex-col gap-6 pr-shell">
 
             {error && (
-                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)' }}>
-                    <div className="glass-panel" style={{ padding: '2rem', maxWidth: '400px', width: '90%', textAlign: 'center' }}>
-                        <h2 style={{ fontSize: '1.5rem', color: 'var(--accent-danger)', marginBottom: '1rem' }}>Attention</h2>
-                        <p style={{ marginBottom: '1.5rem', color: 'var(--text-primary)' }}>{error}</p>
-                        <button onClick={() => setError('')} className="btn btn-primary" style={{ width: '100%' }}>Dismiss</button>
+                <div className="pr-modal-overlay pr-modal-overlay-soft">
+                    <div className="glass-panel pr-error-modal">
+                        <h2 className="pr-error-title">Attention</h2>
+                        <p className="pr-error-text">{error}</p>
+                        <button onClick={() => setError('')} className="btn btn-primary pr-error-btn">Dismiss</button>
                     </div>
                 </div>
             )}
 
-            <div className="glass-panel" style={{ padding: '2rem' }}>
-                <div className="flex-between stack-mobile gap-4" style={{ marginBottom: '1.5rem' }}>
-                    <h3 className="flex gap-2" style={{ color: 'var(--text-primary)', margin: 0, alignItems: 'center' }}>
-                        <Users size={24} color="var(--accent-primary)" /> Global Player Database
-                    </h3>
-                    <div className="flex gap-4 stack-mobile" style={{ alignItems: 'center' }}>
-                        <input
-                            type="text"
-                            placeholder="Search names..."
-                            value={searchTerm}
-                            onChange={e => setSearchTerm(e.target.value)}
-                            style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem', width: '180px' }}
-                        />
-                        <label className="flex gap-2" style={{ cursor: 'pointer', alignItems: 'center', fontSize: '0.85rem', whiteSpace: 'nowrap' }}>
-                            <input
-                                type="checkbox"
-                                checked={showOnlyActive}
-                                onChange={(e) => setShowOnlyActive(e.target.checked)}
-                                style={{ width: '16px', height: '16px' }}
-                            />
-                            <span>Active Only</span>
-                        </label>
+            <div className="glass-panel pr-db-panel">
+                <div className="flex-between stack-mobile gap-4 pr-db-header">
+                    <div className="flex gap-3 pr-db-head-left">
+                        <button
+                            type="button"
+                            className="btn btn-secondary"
+                            onClick={goBackToMatchSetup}
+                            aria-label="Back"
+                            title="Back"
+                        >
+                            <ArrowLeft size={18} />
+                        </button>
+                        <div className="pr-db-title-wrap">
+                            <h3 className="flex gap-2 pr-db-title">
+                            <Users size={24} color="var(--accent-primary)" /> Global Player Database
+                            </h3>
+                            <p className="pr-db-kicker">Showing {filteredPlayers.length} player{filteredPlayers.length === 1 ? '' : 's'}</p>
+                        </div>
+                    </div>
+                    <button
+                        type="button"
+                        className="btn btn-primary"
+                        onClick={openAddPlayerModal}
+                    >
+                        <span className="flex-center gap-2">
+                            <UserPlus size={16} /> Add New Player
+                        </span>
+                    </button>
+                </div>
+                <div className="flex gap-4 stack-mobile pr-db-controls">
+                    <input
+                        type="text"
+                        placeholder="Search names..."
+                        value={searchTerm}
+                        onChange={e => setSearchTerm(e.target.value)}
+                        className="pr-search"
+                    />
+                    <div className="pr-active-only-toggle-wrap">
+                        <span className="pr-active-only-title">Active Only</span>
+                        <div className="pr-active-only-toggle" role="group" aria-label="Active only filter">
+                            <button
+                                type="button"
+                                className={`pr-active-only-btn ${showOnlyActive ? 'is-active' : ''}`}
+                                onClick={() => setShowOnlyActive(true)}
+                                aria-pressed={showOnlyActive}
+                            >
+                                Yes
+                            </button>
+                            <button
+                                type="button"
+                                className={`pr-active-only-btn ${!showOnlyActive ? 'is-active' : ''}`}
+                                onClick={() => setShowOnlyActive(false)}
+                                aria-pressed={!showOnlyActive}
+                            >
+                                No
+                            </button>
+                        </div>
                     </div>
                 </div>
 
                 {players.length === 0 ? (
-                    <p style={{ color: 'var(--text-muted)', textAlign: 'center' }}>No players registered yet.</p>
+                    <p className="pr-empty">No players registered yet.</p>
                 ) : (
-                    <div className="grid grid-mobile-1 gap-4" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))' }}>
+                    <div className="grid grid-mobile-1 gap-4 pr-grid">
                         {filteredPlayers.map(p => (
-                            <div key={p.id} className="glass-card flex-col gap-4" style={{ padding: '1.25rem', position: 'relative', overflow: 'hidden', opacity: p.is_active === 0 ? 0.6 : 1 }}>
-                                <div style={{ position: 'absolute', top: 10, right: 10, zIndex: 1 }}>
-                                    <label className="flex gap-1" style={{ cursor: 'pointer', alignItems: 'center', fontSize: '0.65rem' }}>
-                                        <input
-                                            type="checkbox"
-                                            checked={p.is_active !== 0}
-                                            onChange={() => togglePlayerActive(p)}
-                                            style={{ width: '12px', height: '12px' }}
-                                        />
-                                        <span style={{ fontWeight: 700, color: p.is_active === 0 ? 'var(--text-muted)' : 'var(--accent-success)' }}>
-                                            {p.is_active === 0 ? 'INACTIVE' : 'ACTIVE'}
-                                        </span>
-                                    </label>
-                                </div>
+                            <div
+                                key={p.id}
+                                className={`glass-card flex-col gap-4 pr-player-card ${p.is_active === 0 ? 'is-inactive' : ''}`}
+                                role="button"
+                                tabIndex={0}
+                                onClick={() => setSelectedPlayer(p)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' || e.key === ' ') {
+                                        e.preventDefault();
+                                        setSelectedPlayer(p);
+                                    }
+                                }}
+                            >
                                 {deleteConfirmId === p.id && (
-                                    <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'var(--bg-secondary)', display: 'flex', flexWrap: 'wrap', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.75rem', zIndex: 10, padding: '1rem', textAlign: 'center' }}>
-                                        <div style={{ width: '100%', fontWeight: 700, color: 'var(--accent-danger)', fontSize: '0.9rem' }}>Delete {p.name}?</div>
-                                        <button className="btn btn-danger" style={{ padding: '6px 12px', fontSize: '0.75rem', flex: 1 }} onClick={() => removePlayer(p.id)}>Delete</button>
-                                        <button className="btn btn-secondary" style={{ padding: '6px 12px', fontSize: '0.75rem', flex: 1 }} onClick={() => setDeleteConfirmId(null)}>Cancel</button>
+                                    <div className="pr-delete-overlay" onClick={(e) => e.stopPropagation()}>
+                                        <div className="pr-delete-title">Delete {p.name}?</div>
+                                        <button className="btn btn-danger pr-delete-btn" onClick={(e) => { e.stopPropagation(); removePlayer(p.id); }}>Delete</button>
+                                        <button className="btn btn-secondary pr-delete-btn" onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(null); }}>Cancel</button>
                                     </div>
                                 )}
-                                <div className="flex gap-4" style={{ alignItems: 'center' }}>
-                                    <div
-                                        onClick={() => setSelectedPlayer(p)}
-                                        style={{ width: '60px', height: '60px', borderRadius: '50%', overflow: 'hidden', background: 'var(--bg-tertiary)', border: '2px solid var(--accent-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                                <div className="pr-status-corner">
+                                    <button
+                                        type="button"
+                                        className={`pr-status-btn ${p.is_active === 0 ? 'is-muted' : 'is-active'}`}
+                                        onClick={(e) => { e.stopPropagation(); togglePlayerActive(p); }}
+                                        disabled={!state.adminPassword}
+                                        title={state.adminPassword ? 'Toggle player status' : 'Enter Admin PIN to change status'}
                                     >
-                                        <div style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-muted)' }}>
-                                            {p.name.charAt(0)}
-                                        </div>
+                                        {p.is_active === 0 ? 'INACTIVE' : 'ACTIVE PLAYER'}
+                                    </button>
+                                    <div className="flex gap-2 pr-status-actions">
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); editPlayer(p); }}
+                                            className="pr-action-btn is-edit"
+                                            disabled={!state.adminPassword}
+                                            title="Edit Player"
+                                        >
+                                            Edit
+                                        </button>
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(p.id); }}
+                                            className="pr-action-btn is-delete"
+                                            disabled={!state.adminPassword}
+                                            title="Remove Player"
+                                        >
+                                            Delete
+                                        </button>
                                     </div>
-                                    <div className="flex-col" style={{ flex: 1 }}>
-                                        <div className="flex-between">
-                                            <span
-                                                onClick={() => setSelectedPlayer(p)}
-                                                style={{ fontSize: '1.1rem', fontWeight: 700, cursor: 'pointer' }}
-                                            >
-                                                {p.name}
-                                            </span>
-                                            <div className="flex gap-3">
-                                                <button
-                                                    onClick={() => editPlayer(p)}
-                                                    style={{ background: 'none', border: 'none', color: 'var(--accent-primary)', cursor: 'pointer', opacity: state.adminPassword ? 0.6 : 0.2 }}
-                                                    disabled={!state.adminPassword}
-                                                    title="Edit Player"
-                                                >
-                                                    <span style={{ fontSize: '0.8rem', fontWeight: 600 }}>EDIT</span>
-                                                </button>
-                                                <button
-                                                    onClick={() => setDeleteConfirmId(p.id)}
-                                                    style={{ background: 'none', border: 'none', color: 'var(--accent-danger)', cursor: 'pointer', opacity: state.adminPassword ? 0.6 : 0.2 }}
-                                                    disabled={!state.adminPassword}
-                                                    title="Remove Player"
-                                                >
-                                                    <Trash2 size={16} />
-                                                </button>
-                                            </div>
-                                        </div>
-                                        <div className="flex gap-2" style={{ alignItems: 'center' }}>
-                                            <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--accent-success)' }} />
-                                            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Active Stats</span>
-                                        </div>
+                                </div>
+                                <div className="pr-player-head">
+                                    <div className="pr-player-main">
+                                        <span
+                                            onClick={() => setSelectedPlayer(p)}
+                                            className="pr-player-name"
+                                        >
+                                            {p.name}
+                                        </span>
                                     </div>
                                 </div>
 
-                                <div className="flex-between" style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', background: 'rgba(0,0,0,0.1)', padding: '0.75rem', borderRadius: '8px' }}>
-                                    <div className="flex-col text-center">
-                                        <span style={{ fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--text-muted)' }}>Runs</span>
-                                        <span style={{ fontWeight: 800, color: 'var(--text-primary)', fontSize: '1rem' }}>{p.total_runs || 0}</span>
+                                <div className="flex-between pr-stats-strip">
+                                    <div className="flex-col text-center pr-stat-item">
+                                        <span className="pr-stat-label">Runs:{' '}</span>
+                                        <span className="pr-stat-value">{p.total_runs || 0}</span>
                                     </div>
-                                    <div className="flex-col text-center">
-                                        <span style={{ fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--text-muted)' }}>Wickets</span>
-                                        <span style={{ fontWeight: 800, color: 'var(--text-primary)', fontSize: '1rem' }}>{p.total_wickets || 0}</span>
+                                    <div className="flex-col text-center pr-stat-item">
+                                        <span className="pr-stat-label">Wickets:{' '}</span>
+                                        <span className="pr-stat-value">{p.total_wickets || 0}</span>
                                     </div>
-                                    <div className="flex-col text-center">
-                                        <span style={{ fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--text-muted)' }}>Played</span>
-                                        <span style={{ fontWeight: 800, color: 'var(--text-primary)', fontSize: '1rem' }}>{p.balls_faced || 0}b</span>
+                                    <div className="flex-col text-center pr-stat-item">
+                                        <span className="pr-stat-label">Played:{' '}</span>
+                                        <span className="pr-stat-value">{p.balls_faced || 0}b</span>
                                     </div>
                                 </div>
                             </div>
@@ -400,45 +385,112 @@ export default function PlayerRoster() {
                 )}
             </div>
 
+            {showPlayerFormModal && (
+                <div className="pr-modal-overlay pr-modal-overlay-soft">
+                    <div className="glass-panel pr-form-panel pr-form-modal">
+                        <button
+                            type="button"
+                            className="pr-profile-close"
+                            onClick={cancelEdit}
+                            aria-label="Close"
+                        >
+                            &times;
+                        </button>
+                        <h2 className="text-gradient flex-center gap-2 pr-form-title">
+                            <UserPlus size={28} />
+                            {editingPlayerId ? 'Edit Player Details' : 'Add New Player'}
+                        </h2>
+                        {!editingPlayerId && !state.adminPassword && (
+                            <div className="flex-center pr-public-wrap">
+                                <span className="pr-public-badge">
+                                    🔓 Public Registration: No PIN Required
+                                </span>
+                            </div>
+                        )}
+
+                        <form onSubmit={addPlayer} className="flex-col gap-4">
+                            <div className="flex gap-4 stack-mobile pr-form-row">
+                                <div className="flex-col gap-1 pr-form-col">
+                                    <label className="pr-input-label">First Name</label>
+                                    <input
+                                        value={firstName}
+                                        onChange={(e) => setFirstName(e.target.value)}
+                                        placeholder="Virat"
+                                        required
+                                    />
+                                </div>
+                                <div className="flex-col gap-1 pr-form-col">
+                                    <label className="pr-input-label">Middle Name (Optional)</label>
+                                    <input
+                                        value={middleName}
+                                        onChange={(e) => setMiddleName(e.target.value)}
+                                        placeholder="Kumar"
+                                    />
+                                </div>
+                                <div className="flex-col gap-1 pr-form-col">
+                                    <label className="pr-input-label">Last Name</label>
+                                    <input
+                                        value={lastName}
+                                        onChange={(e) => setLastName(e.target.value)}
+                                        placeholder="Kohli"
+                                        required
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="flex gap-4 pr-form-actions">
+                                <button type="submit" className="btn btn-primary pr-submit-btn" disabled={editingPlayerId !== null && !state.adminPassword}>
+                                    {editingPlayerId ? 'Update Player' : 'Register Player'}
+                                </button>
+                                <button type="button" className="btn btn-secondary pr-cancel-btn" onClick={cancelEdit}>
+                                    Cancel
+                                </button>
+                            </div>
+                            {editingPlayerId !== null && !state.adminPassword && <p className="pr-admin-note">Enter Admin PIN in the top right header to enable updating.</p>}
+                        </form>
+                    </div>
+                </div>
+            )}
+
             {/* Detailed Stats Modal */}
             {selectedPlayer && (
-                <div className="flex-center" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', zIndex: 100, padding: '1rem', backdropFilter: 'blur(8px)' }}>
-                    <div className="glass-panel" style={{ maxWidth: '500px', width: '100%', padding: '2rem', position: 'relative' }}>
+                <div className="pr-modal-overlay pr-profile-overlay">
+                    <div className="glass-panel pr-profile-modal">
                         <button
                             onClick={() => setSelectedPlayer(null)}
-                            style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '1.5rem' }}
+                            className="pr-profile-close"
                         >
                             &times;
                         </button>
 
-                        <div className="flex-col gap-6">
-                                <div className="flex gap-4" style={{ alignItems: 'center' }}>
-                                    <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'var(--accent-gradient)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem', fontWeight: 800 }}>
+                        <div className="flex-col gap-6 pr-profile-body">
+                                <div className="flex gap-4 pr-profile-head">
+                                    <div className="pr-profile-avatar">
                                         {selectedPlayer.name.charAt(0)}
                                     </div>
-                                    <div className="flex-col">
-                                        <h2 style={{ fontSize: '1.8rem' }}>{selectedPlayer.name}</h2>
-                                        <span style={{ color: 'var(--accent-success)', fontWeight: 600 }}>
+                                    <div className="flex-col pr-profile-meta">
+                                        <h2 className="pr-profile-name">{selectedPlayer.name}</h2>
+                                        <span className="pr-profile-record">
                                             Matches: {selectedPlayer.matches_played || 0} • W: {selectedPlayer.matches_won || 0} • L: {selectedPlayer.matches_lost || 0} • J: {selectedPlayer.matches_joker || 0}
                                         </span>
                                     </div>
                                 </div>
 
-                            <div className="grid gap-4" style={{ gridTemplateColumns: '1fr 1fr' }}>
+                            <div className="grid gap-4 pr-profile-stats-grid">
                                 {/* Batting Stats */}
-                                <div className="glass-card flex-col gap-3" style={{ padding: '1.25rem' }}>
-                                    <h4 style={{ color: 'var(--accent-primary)', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Batting</h4>
-                                    <div className="flex-between">
-                                        <span style={{ color: 'var(--text-muted)' }}>Runs</span>
-                                        <span style={{ fontWeight: 700 }}>{selectedPlayer.total_runs || 0}</span>
+                                <div className="glass-card flex-col gap-3 pr-profile-stat-card">
+                                    <h4 className="pr-profile-stat-title is-batting">Batting</h4>
+                                    <div className="flex-between pr-profile-stat-row">
+                                        <span>Runs</span>
+                                        <span className="pr-profile-stat-value">{selectedPlayer.total_runs || 0}</span>
                                     </div>
-                                    <div className="flex-between">
-                                        <span style={{ color: 'var(--text-muted)' }}>Balls</span>
-                                        <span style={{ fontWeight: 700 }}>{selectedPlayer.balls_faced || 0}</span>
+                                    <div className="flex-between pr-profile-stat-row">
+                                        <span>Balls</span>
+                                        <span className="pr-profile-stat-value">{selectedPlayer.balls_faced || 0}</span>
                                     </div>
-                                    <div className="flex-between">
-                                        <span style={{ color: 'var(--text-muted)' }}>SR</span>
-                                        <span style={{ fontWeight: 700 }}>
+                                    <div className="flex-between pr-profile-stat-row">
+                                        <span>SR</span>
+                                        <span className="pr-profile-stat-value">
                                             {selectedPlayer.balls_faced && selectedPlayer.balls_faced > 0
                                                 ? ((selectedPlayer.total_runs || 0) / selectedPlayer.balls_faced * 100).toFixed(1)
                                                 : '0.0'}
@@ -447,23 +499,23 @@ export default function PlayerRoster() {
                                 </div>
 
                                 {/* Bowling Stats */}
-                                <div className="glass-card flex-col gap-3" style={{ padding: '1.25rem' }}>
-                                    <h4 style={{ color: 'var(--accent-secondary)', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Bowling</h4>
-                                    <div className="flex-between">
-                                        <span style={{ color: 'var(--text-muted)' }}>Wkts</span>
-                                        <span style={{ fontWeight: 700 }}>{selectedPlayer.total_wickets || 0}</span>
+                                <div className="glass-card flex-col gap-3 pr-profile-stat-card">
+                                    <h4 className="pr-profile-stat-title is-bowling">Bowling</h4>
+                                    <div className="flex-between pr-profile-stat-row">
+                                        <span>Wkts</span>
+                                        <span className="pr-profile-stat-value">{selectedPlayer.total_wickets || 0}</span>
                                     </div>
-                                    <div className="flex-between">
-                                        <span style={{ color: 'var(--text-muted)' }}>Overs</span>
-                                        <span style={{ fontWeight: 700 }}>
+                                    <div className="flex-between pr-profile-stat-row">
+                                        <span>Overs</span>
+                                        <span className="pr-profile-stat-value">
                                             {selectedPlayer.legal_balls_bowled
                                                 ? (Math.floor(selectedPlayer.legal_balls_bowled / 6) + (selectedPlayer.legal_balls_bowled % 6) / 10).toFixed(1)
                                                 : '0.0'}
                                         </span>
                                     </div>
-                                    <div className="flex-between">
-                                        <span style={{ color: 'var(--text-muted)' }}>Econ</span>
-                                        <span style={{ fontWeight: 700 }}>
+                                    <div className="flex-between pr-profile-stat-row">
+                                        <span>Econ</span>
+                                        <span className="pr-profile-stat-value">
                                             {selectedPlayer.legal_balls_bowled && selectedPlayer.legal_balls_bowled > 0
                                                 ? ((selectedPlayer.runs_conceded || 0) / (selectedPlayer.legal_balls_bowled / 6)).toFixed(2)
                                                 : '0.00'}
@@ -473,14 +525,14 @@ export default function PlayerRoster() {
                             </div>
 
                             {/* Match History Section */}
-                            <div className="flex-col gap-3">
-                                <h4 style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '1px' }}>Recent Match Performance</h4>
+                            <div className="flex-col gap-3 pr-profile-history">
+                                <h4 className="pr-profile-section-title">Recent Match Performance</h4>
                                 {loadingHistory ? (
-                                    <div className="animate-pulse" style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Loading history...</div>
+                                    <div className="animate-pulse pr-profile-muted">Loading history...</div>
                                 ) : history.length === 0 ? (
-                                    <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>No matches recorded yet.</p>
+                                    <p className="pr-profile-muted">No matches recorded yet.</p>
                                 ) : (
-                                    <div className="flex-col gap-2" style={{ maxHeight: '250px', overflowY: 'auto', paddingRight: '0.5rem' }}>
+                                    <div className="flex-col gap-2 pr-profile-history-list">
                                         {history.map((m, idx) => {
                                             const team1SquadStr = m.team1_squad || '[]';
                                             let isTeam1 = false;
@@ -520,42 +572,40 @@ export default function PlayerRoster() {
                                             }
 
                                             return (
-                                                <div key={idx} className="glass-card flex-col gap-2" style={{ padding: '0.75rem', fontSize: '0.85rem', background: bgColor, borderColor: borderColor }}>
-                                                    <div className="flex-between">
-                                                        <span style={{ fontWeight: 600 }}>
+                                                <div key={idx} className="glass-card flex-col gap-2 pr-profile-match-card" style={{ background: bgColor, borderColor: borderColor }}>
+                                                    <div className="flex-between pr-profile-match-head">
+                                                        <span className="pr-profile-match-score">
                                                             {m.team1_name} <span style={{ color: 'var(--accent-primary)' }}>{m.team1_runs || 0}/{m.team1_wickets || 0}</span>
-                                                            <span style={{ color: 'var(--text-muted)', margin: '0 0.5rem' }}>vs</span>
+                                                            <span className="pr-profile-vs">vs</span>
                                                             {m.team2_name} <span style={{ color: 'var(--accent-primary)' }}>{m.team2_runs || 0}/{m.team2_wickets || 0}</span>
                                                         </span>
-                                                        <div className="flex-col" style={{ alignItems: 'flex-end', gap: '2px' }}>
-                                                            <span style={{ fontSize: '0.7rem', color: 'var(--accent-primary)' }}>{m.created_at ? new Date(m.created_at).toLocaleDateString() : 'Unknown Date'}</span>
-                                                            {matchStatus === 'WON' && <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--accent-success)', textTransform: 'uppercase' }}>Won</span>}
-                                                            {matchStatus === 'LOST' && <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--accent-danger)', textTransform: 'uppercase' }}>Lost</span>}
-                                                            {matchStatus === 'JOKER' && <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--accent-warning)', textTransform: 'uppercase' }}>Joker</span>}
+                                                        <div className="flex-col pr-profile-match-meta">
+                                                            <span className="pr-profile-date">{m.created_at ? new Date(m.created_at).toLocaleDateString() : 'Unknown Date'}</span>
+                                                            {matchStatus === 'WON' && <span className="pr-profile-result is-won">Won</span>}
+                                                            {matchStatus === 'LOST' && <span className="pr-profile-result is-lost">Lost</span>}
+                                                            {matchStatus === 'JOKER' && <span className="pr-profile-result is-joker">Joker</span>}
                                                         </div>
                                                     </div>
                                                     
-                                                    <div className="flex-between" style={{ padding: '0.4rem 0', borderTop: `1px solid ${borderColor}`, borderBottom: `1px solid ${borderColor}` }}>
-                                                        <div className="flex gap-2" style={{ alignItems: 'center' }}>
-                                                            <span style={{ fontSize: '0.7rem', padding: '2px 6px', background: 'var(--bg-tertiary)', borderRadius: '4px' }}>Played for: {teamName}</span>
+                                                    <div className="flex-between pr-profile-match-mid" style={{ borderTop: `1px solid ${borderColor}`, borderBottom: `1px solid ${borderColor}` }}>
+                                                        <div className="flex gap-2 pr-profile-played-wrap">
+                                                            <span className="pr-profile-played-tag">Played for: {teamName}</span>
                                                         </div>
-                                                        <div className="flex gap-3" style={{ fontWeight: 700 }}>
+                                                        <div className="flex gap-3 pr-profile-impact">
                                                             <span title="Runs Scored">{m.player_runs || 0}r</span>
                                                             <span style={{ color: 'var(--accent-secondary)' }} title="Wickets Taken">{m.player_wickets || 0}w</span>
                                                         </div>
                                                     </div>
 
-                                                    <div className="flex gap-2" style={{ marginTop: '0.2rem' }}>
+                                                    <div className="flex gap-2 pr-profile-match-actions">
                                                         <button
                                                             onClick={() => setViewSquadsMatch(m)}
-                                                            className="btn btn-secondary"
-                                                            style={{ flex: 1, padding: '0.4rem', fontSize: '0.75rem' }}
+                                                            className="btn btn-secondary pr-profile-mini-btn"
                                                         >
                                                             View Squads
                                                         </button>
                                                         <button 
-                                                            className="btn btn-secondary" 
-                                                            style={{ flex: 1, padding: '0.4rem', fontSize: '0.75rem' }} 
+                                                            className="btn btn-secondary pr-profile-mini-btn" 
                                                             onClick={() => navigate(`/history/${m.id}`)}
                                                         >
                                                             View Scorecard
@@ -568,9 +618,9 @@ export default function PlayerRoster() {
                                 )}
                             </div>
 
-                            <div className="flex-col gap-2">
-                                <h4 style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Teams Represented</h4>
-                                <div className="flex gap-2" style={{ flexWrap: 'wrap' }}>
+                            <div className="flex-col gap-2 pr-profile-teams">
+                                <h4 className="pr-profile-teams-title">Teams Represented</h4>
+                                <div className="flex gap-2 pr-profile-teams-list">
                                     {Array.from(new Set(history.map(m => {
                                         try {
                                             const team1SquadStr = m.team1_squad || '[]';
@@ -586,14 +636,14 @@ export default function PlayerRoster() {
                                             return [];
                                         }
                                     }).flat().filter(Boolean))).map((t: any, i) => (
-                                        <span key={i} style={{ fontSize: '0.7rem', padding: '4px 10px', background: 'rgba(255,255,255,0.05)', borderRadius: 'var(--radius-pill)', border: '1px solid var(--border-light)' }}>
+                                        <span key={i} className="pr-profile-team-chip">
                                             {t}
                                         </span>
                                     ))}
-                                    {history.length === 0 && <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>None yet</span>}
+                                    {history.length === 0 && <span className="pr-profile-muted">None yet</span>}
                                 </div>
                             </div>
-                            <button className="btn btn-secondary" onClick={() => setSelectedPlayer(null)}>Close</button>
+                            <button className="btn btn-secondary pr-profile-close-cta" onClick={() => setSelectedPlayer(null)}>Close</button>
                         </div>
                     </div>
                 </div>
