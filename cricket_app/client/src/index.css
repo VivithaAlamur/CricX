@@ -194,7 +194,7 @@ input::placeholder {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   gap: 12px;
 }
 
@@ -231,6 +231,7 @@ input::placeholder {
   width: 100%;
   box-sizing: border-box;
   max-height: calc(100vh - 7rem);
+  overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
 }
@@ -1081,6 +1082,10 @@ input::placeholder {
 
   .setup-grid {
     grid-template-columns: 1fr;
+  }
+
+  .ms-chip-row {
+    flex-wrap: wrap;
   }
 
   .hide-mobile {

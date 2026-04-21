@@ -339,11 +339,6 @@ export default function MatchSetup() {
         const team2MaxReached = team2Squad.length >= MAX_TEAM_SELECTION;
         const selectedPlayersCount = new Set([...team1Squad, ...team2Squad]).size;
         const canClearSelection = selectedPlayersCount >= 2;
-        const hasMatchBasics = !!team1.trim() && !!team2.trim() && !!oversInput.trim() && Number(oversInput) > 0;
-        const hasPickSquads = team1Squad.length === MAX_TEAM_SELECTION && team2Squad.length === MAX_TEAM_SELECTION;
-        const hasReadyToToss = !!state.scorerPassword.trim();
-        const hasValidJoker = !useJoker || (!!jokerPlayer && team1Squad.includes(jokerPlayer) && team2Squad.includes(jokerPlayer));
-        const canProceedToToss = hasMatchBasics && hasPickSquads && hasReadyToToss && hasValidJoker;
 
         return (
             <div className="glass-panel custom-scrollbar ms-setup-panel">
@@ -674,12 +669,7 @@ export default function MatchSetup() {
                             />
                         </div>
 
-                        <button
-                            type="submit"
-                            className="btn btn-primary"
-                            disabled={!canProceedToToss}
-                            title={!canProceedToToss ? 'Complete Match Basics, Pick Squads, and Ready to Toss details' : undefined}
-                        >
+                        <button type="submit" className="btn btn-primary">
                             Proceed to Toss
                         </button>
 
