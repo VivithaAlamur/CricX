@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useMatch } from '../store/MatchContext';
-import { ArrowLeft, RefreshCcw, ClipboardList, Users, Flag } from 'lucide-react';
+import { ArrowLeft, RefreshCcw, ClipboardList, Users, Flag, AlertTriangle } from 'lucide-react';
+import PlayerCardSelector from '../components/PlayerCardSelector';
 
 function SetupControlIcon() {
     return (
@@ -82,6 +83,7 @@ export default function MatchSetup() {
     const [jokerPlayer, setJokerPlayer] = useState<string | null>(null);
     const [setupError, setSetupError] = useState('');
     const [selectionError, setSelectionError] = useState('');
+    const [showClearConfirm, setShowClearConfirm] = useState(false);
     const [showMandatoryNote, setShowMandatoryNote] = useState(false);
     const [fieldErrors, setFieldErrors] = useState({
         team1: false,
@@ -102,12 +104,26 @@ export default function MatchSetup() {
             .catch(console.error);
     }, []);
 
+    useEffect(() => {
+        if (state.status !== 'SETUP') return;
+
+        // Restore setup form values when navigating back from toss.
+        setTeam1(state.teams.team1 || '');
+        setTeam2(state.teams.team2 || '');
+        setTeam1Squad(state.teams.team1_squad || []);
+        setTeam2Squad(state.teams.team2_squad || []);
+        setOversInput(state.config.overs ? String(state.config.overs) : '');
+        setNoExtraRuns(!!state.config.noExtraRuns);
+        setUseJoker(!!state.config.jokerPlayer);
+        setJokerPlayer(state.config.jokerPlayer || null);
+    }, [state.status]);
+
     const [batter1, setBatter1] = useState('');
     const [batter2, setBatter2] = useState('');
     const [bowler, setBowler] = useState('');
 
     const [tossWinner, setTossWinner] = useState('');
-    const [tossDecision, setTossDecision] = useState<'bat' | 'bowl'>('bat');
+    const [tossDecision, setTossDecision] = useState<'' | 'bat' | 'bowl'>('');
     const [isTossing, setIsTossing] = useState(false);
     const [tossResult, setTossResult] = useState<'Heads' | 'Tails' | null>(null);
     const canPickSquads = !!team1.trim() && !!team2.trim() && !!oversInput.trim() && Number(oversInput) > 0;
@@ -233,10 +249,11 @@ export default function MatchSetup() {
 
     const clearSquads = () => {
         if (!canPickSquads) return;
+        setShowClearConfirm(true);
+    };
 
-        const shouldClear = window.confirm('Are you sure you want to reset squad selections?');
-        if (!shouldClear) return;
-
+    const confirmClear = () => {
+        setShowClearConfirm(false);
         if (jokerPlayer) {
             setTeam1Squad([jokerPlayer]);
             setTeam2Squad([jokerPlayer]);
@@ -341,6 +358,26 @@ export default function MatchSetup() {
         const canClearSelection = selectedPlayersCount >= 2;
 
         return (
+            <>
+            {showClearConfirm && (
+                <div className="pr-modal-overlay pr-modal-overlay-soft">
+                    <div className="glass-panel ms-confirm-modal">
+                        <div className="ms-confirm-modal-header">
+                            <div className="ms-confirm-modal-icon">
+                                <AlertTriangle size={22} />
+                            </div>
+                            <h3 className="ms-confirm-title">Clear Selection</h3>
+                        </div>
+                        <div className="ms-confirm-body">
+                            <p className="ms-confirm-text">Are you sure you want to reset all squad selections? This cannot be undone.</p>
+                            <div className="ms-confirm-actions">
+                                <button type="button" className="btn btn-secondary" onClick={() => setShowClearConfirm(false)}>Cancel</button>
+                                <button type="button" className="btn btn-danger" onClick={confirmClear}>Clear</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
             <div className="glass-panel custom-scrollbar ms-setup-panel">
                 <div className="setup-topbar ms-setup-topbar">
                     <h2 className="text-gradient ms-setup-title ms-setup-title-wrap">
@@ -540,7 +577,7 @@ export default function MatchSetup() {
 
                         {!canPickSquads && (
                             <div className="ms-info-banner">
-                                Enter Team 1, 2 Names, and Total Overs to unlock squad selection.
+                                Info.: Enter Match Basics to unlock squad selection.
                             </div>
                         )}
 
@@ -681,6 +718,7 @@ export default function MatchSetup() {
                     </section>
                 </form>
             </div>
+            </>
         );
     }
 
@@ -714,37 +752,124 @@ export default function MatchSetup() {
                     <h2 className="text-gradient ms-toss-title">Coin Toss</h2>
                 </div>
 
+                <div className="ms-toss-vs-banner">
+                    <span className="ms-toss-team-name">{state.teams.team1}</span>
+                    <span className="ms-toss-vs-badge">VS</span>
+                    <span className="ms-toss-team-name">{state.teams.team2}</span>
+                </div>
+
                 {!state.toss.winner ? (
                     <div className="flex-col gap-6">
                         <div className="flex-col gap-4 flex-center ms-toss-flip-block">
-                            <div className={`ball-bubble ms-toss-coin ${isTossing ? 'animate-pulse' : ''} ${tossResult ? 'has-result' : ''}`}>
-                                {isTossing ? '...' : tossResult ? tossResult : '🪙'}
+                            <div className={`ms-toss-coin-wrap ${isTossing ? 'is-spinning' : ''} ${tossResult ? 'has-result' : ''}`}>
+                                <span className="ms-toss-coin-emoji" aria-hidden="true">
+                                    {isTossing ? '🫳' : '🪙'}
+                                </span>
                             </div>
-                            <button type="button" className="btn btn-primary" onClick={simulateToss} disabled={isTossing}>
-                                {isTossing ? 'Flipping Coin...' : 'Flip Coin (Random)'}
+                            {tossResult && (
+                                <div className="ms-toss-result-badge">
+                                    Result: <strong>{tossResult}</strong>
+                                </div>
+                            )}
+                            <button type="button" className="btn btn-primary ms-toss-flip-btn" onClick={simulateToss} disabled={isTossing}>
+                                {isTossing ? 'Flipping...' : tossResult ? 'Flip Again' : 'Flip Coin (Random)'}
                             </button>
                         </div>
 
-                        <div>
-                            <p className="ms-toss-note">Enter Toss Details:</p>
-                            <form onSubmit={handleTossSubmit} className="flex-col gap-4 text-left">
-                                <div className="flex-col gap-2">
-                                    <label>Who won the toss?</label>
-                                    <select value={tossWinner} onChange={e => setTossWinner(e.target.value)} required>
-                                        <option value="" disabled>Select Team</option>
-                                        <option value={state.teams.team1}>{state.teams.team1}</option>
-                                        <option value={state.teams.team2}>{state.teams.team2}</option>
-                                    </select>
+                        <div className="glass-card ms-toss-form-card">
+                            <p className="ms-toss-note">Enter Toss Details</p>
+                            <form onSubmit={handleTossSubmit} className="flex-col gap-4">
+                                <div className="flex-col gap-3 ms-toss-winner-group">
+                                    <label className="ms-toss-field-label">Who won the toss?</label>
+                                    <div className="ms-toss-team-select">
+                                        <button
+                                            type="button"
+                                            className={`ms-toss-team-btn ${tossWinner === state.teams.team1 ? 'is-selected' : ''}`}
+                                            onClick={() => setTossWinner(state.teams.team1)}
+                                        >
+                                            {state.teams.team1}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className={`ms-toss-team-btn ${tossWinner === state.teams.team2 ? 'is-selected' : ''}`}
+                                            onClick={() => setTossWinner(state.teams.team2)}
+                                        >
+                                            {state.teams.team2}
+                                        </button>
+                                    </div>
                                 </div>
-                                <div className="flex-col gap-2">
-                                    <label>What did they decide to do?</label>
-                                    <select value={tossDecision} onChange={e => setTossDecision(e.target.value as 'bat' | 'bowl')} required>
-                                        <option value="bat">Bat</option>
-                                        <option value="bowl">Bowl</option>
-                                    </select>
+                                <div className="flex-col gap-3 ms-toss-decision-group">
+                                    <label className="ms-toss-field-label">What did they decide to do?</label>
+                                    <div className="ms-toss-team-select">
+                                        <button
+                                            type="button"
+                                            className={`ms-toss-team-btn ms-toss-decision-btn ${tossDecision === 'bat' ? 'is-selected' : ''}`}
+                                            onClick={() => setTossDecision('bat')}
+                                        >
+                                            <svg width="20" height="20" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                                                <defs>
+                                                    <linearGradient id="batBladeGrad" x1="15" y1="86" x2="62" y2="30" gradientUnits="userSpaceOnUse">
+                                                        <stop offset="0%" stopColor="#e7c596"/>
+                                                        <stop offset="100%" stopColor="#f7e3c6"/>
+                                                    </linearGradient>
+                                                    <linearGradient id="batEdgeGrad" x1="20" y1="82" x2="58" y2="38" gradientUnits="userSpaceOnUse">
+                                                        <stop offset="0%" stopColor="#b6845a"/>
+                                                        <stop offset="100%" stopColor="#9f6e47"/>
+                                                    </linearGradient>
+                                                    <linearGradient id="batHandleGrad" x1="63" y1="30" x2="87" y2="5" gradientUnits="userSpaceOnUse">
+                                                        <stop offset="0%" stopColor="#845939"/>
+                                                        <stop offset="100%" stopColor="#c8a585"/>
+                                                    </linearGradient>
+                                                </defs>
+                                                {/* Blade and edge */}
+                                                <path d="M14 82 L17 77 L56 37 L66 27 L70 31 L30 88 L21 90 Z" fill="url(#batEdgeGrad)" stroke="#3f2b1d" strokeWidth="1.6" strokeLinejoin="round"/>
+                                                <path d="M18 78 L56 38 L64 30 L68 34 L30 86 L21 88 L16 82 Z" fill="url(#batBladeGrad)" stroke="#5a3e2a" strokeWidth="1.8" strokeLinejoin="round"/>
+                                                <path d="M24 79 L54 46" stroke="#fff9ee" strokeWidth="2" strokeLinecap="round" opacity="0.45"/>
+                                                {/* Sticker */}
+                                                <path d="M52 43 L61 33 L68 38 L58 49 Z" fill="#c63838" stroke="#6d2222" strokeWidth="1"/>
+                                                <path d="M58 49 L68 38 L72 41 L62 52 Z" fill="#2f66b5" stroke="#1f4377" strokeWidth="1"/>
+                                                <path d="M56.5 46 L66.5 36.5" stroke="#f6efe3" strokeWidth="1.1" strokeLinecap="round"/>
+                                                {/* Shoulder */}
+                                                <path d="M64 30 L70 24 L75 29 L69 35 Z" fill="#7a4e32" stroke="#3f2b1d" strokeWidth="1.2"/>
+                                                {/* Handle */}
+                                                <path d="M70 24 L85 9" stroke="url(#batHandleGrad)" strokeWidth="7" strokeLinecap="round"/>
+                                                <path d="M71 23 L84 10" stroke="#e8ddcf" strokeWidth="2.5" strokeLinecap="round" strokeDasharray="4 6"/>
+                                                <path d="M72.5 21.5 L85.5 8.5" stroke="#2f66b5" strokeWidth="2.5" strokeLinecap="round" strokeDasharray="7 8" opacity="0.9"/>
+                                                <circle cx="86" cy="8" r="3" fill="#8b5f3d" stroke="#3f2b1d" strokeWidth="1"/>
+                                            </svg>
+                                            Bat
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className={`ms-toss-team-btn ms-toss-decision-btn ${tossDecision === 'bowl' ? 'is-selected' : ''}`}
+                                            onClick={() => setTossDecision('bowl')}
+                                        >
+                                            <svg width="20" height="20" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                                                <defs>
+                                                    <radialGradient id="ballGrad" cx="38%" cy="35%" r="60%">
+                                                        <stop offset="0%" stopColor="#ff6b6b"/>
+                                                        <stop offset="55%" stopColor="#cc1a1a"/>
+                                                        <stop offset="100%" stopColor="#7a0000"/>
+                                                    </radialGradient>
+                                                </defs>
+                                                <circle cx="50" cy="50" r="46" fill="url(#ballGrad)"/>
+                                                {/* Upper seam */}
+                                                <path d="M12 42 Q35 28 60 35 Q75 39 88 32" stroke="white" strokeWidth="2.2" strokeLinecap="round" fill="none"/>
+                                                {/* Upper stitch dots */}
+                                                <path d="M12 42 Q35 28 60 35 Q75 39 88 32" stroke="white" strokeWidth="5" strokeLinecap="round" fill="none" strokeDasharray="1.5 6" opacity="0.9"/>
+                                                {/* Lower seam */}
+                                                <path d="M12 58 Q35 72 60 65 Q75 61 88 68" stroke="white" strokeWidth="2.2" strokeLinecap="round" fill="none"/>
+                                                {/* Lower stitch dots */}
+                                                <path d="M12 58 Q35 72 60 65 Q75 61 88 68" stroke="white" strokeWidth="5" strokeLinecap="round" fill="none" strokeDasharray="1.5 6" opacity="0.9"/>
+                                                {/* Shine */}
+                                                <ellipse cx="36" cy="33" rx="10" ry="6" fill="white" opacity="0.15" transform="rotate(-25 36 33)"/>
+                                            </svg>
+                                            Bowl
+                                        </button>
+                                    </div>
                                 </div>
-                                <button type="submit" className="btn btn-secondary ms-btn-top-sm">
-                                    Confirm Manual Toss
+                                <button type="submit" className="btn btn-primary ms-btn-top-sm" disabled={!tossWinner || !tossDecision}>
+                                    Confirm Toss
                                 </button>
                             </form>
                         </div>
@@ -752,65 +877,63 @@ export default function MatchSetup() {
                 ) : (
                     <div className="flex-col gap-6">
                         <div className="glass-card ms-toss-winner-card">
-                            <h3 className="ms-toss-winner-title">{state.toss.winner} Won the Toss!</h3>
-                            <p className="ms-toss-winner-text">They elected to <strong>{state.toss.decision}</strong> first.</p>
+                            <h3 className="ms-toss-winner-title ms-toss-winner-inline">⭐ Toss won by: {state.toss.winner}</h3>
+                            <p className="ms-toss-winner-text">Elected to <strong>{state.toss.decision}</strong> first.</p>
                         </div>
 
                         <form onSubmit={startMatch} className="flex-col gap-4 text-left ms-start-form">
-                            <h4 className="ms-start-heading">Openers ({isBattingFirst})</h4>
-                            <div className="flex-col gap-2">
-                                <label>Striker</label>
-                                <select
-                                    value={batter1}
-                                    onChange={e => {
-                                        const nextStriker = e.target.value;
-                                        setBatter1(nextStriker);
-                                        if (batter2 && batter2 === nextStriker) {
-                                            setBatter2('');
-                                        }
-                                    }}
-                                    required
-                                >
-                                    <option value="" disabled>Select Player...</option>
-                                    {battingFirstSquad.map(p => (
-                                        <option key={`b1-${p}`} value={p} disabled={!!batter2 && batter2 === p}>
-                                            {getPlayerOptionLabel(p)}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-                            <div className="flex-col gap-2">
-                                <label>Non-Striker (Optional)</label>
-                                <select
-                                    value={batter2}
-                                    onChange={e => {
-                                        const nextNonStriker = e.target.value;
-                                        setBatter2(nextNonStriker);
-                                        if (nextNonStriker && batter1 === nextNonStriker) {
-                                            setBatter1('');
-                                        }
-                                    }}
-                                >
-                                    <option value="">None / One Batter Mode</option>
-                                    {battingFirstSquad.map(p => (
-                                        <option key={`b2-${p}`} value={p} disabled={!!batter1 && batter1 === p}>
-                                            {getPlayerOptionLabel(p)}
-                                        </option>
-                                    ))}
-                                </select>
+                            <div className="glass-card ms-toss-form-card">
+                                <p className="ms-toss-note">Opening Batters: {isBattingFirst}</p>
+                                <div className="flex-col gap-4 ms-opening-batters-sections">
+                                    <div className="flex-col gap-2 ms-opener-block">
+                                        <label>Striker</label>
+                                        <PlayerCardSelector
+                                            options={battingFirstSquad}
+                                            value={batter1}
+                                            ariaLabel="Select striker"
+                                            disabledOptions={batter2 ? [batter2] : []}
+                                            getOptionLabel={getPlayerOptionLabel}
+                                            onChange={(nextStriker) => {
+                                                setBatter1(nextStriker);
+                                                if (batter2 && batter2 === nextStriker) {
+                                                    setBatter2('');
+                                                }
+                                            }}
+                                        />
+                                    </div>
+                                    <div className="flex-col gap-2 ms-opener-block ms-opener-block-nonstriker">
+                                        <label>Non-Striker <span className="ms-toss-optional">(Optional)</span></label>
+                                        <PlayerCardSelector
+                                            options={battingFirstSquad}
+                                            value={batter2}
+                                            ariaLabel="Select non-striker"
+                                            includeNoneOption={true}
+                                            noneOptionLabel="None / One Batter Mode"
+                                            disabledOptions={batter1 ? [batter1] : []}
+                                            getOptionLabel={getPlayerOptionLabel}
+                                            onChange={(nextNonStriker) => {
+                                                setBatter2(nextNonStriker);
+                                                if (nextNonStriker && batter1 === nextNonStriker) {
+                                                    setBatter1('');
+                                                }
+                                            }}
+                                        />
+                                    </div>
+                                </div>
                             </div>
 
-                            <h4 className="ms-start-heading ms-start-heading-gap">Opening Bowler ({isBowlingFirst})</h4>
-                            <div className="flex-col gap-2">
-                                <label>Bowler Name</label>
-                                <select value={bowler} onChange={e => setBowler(e.target.value)} required>
-                                    <option value="" disabled>Select Player...</option>
-                                    {openingBowlerOptions.map(p => (
-                                        <option key={`bo-${p}`} value={p}>
-                                            {getPlayerOptionLabel(p)}
-                                        </option>
-                                    ))}
-                                </select>
+                            <div className="glass-card ms-toss-form-card ms-bowler-card">
+                                <p className="ms-toss-note">Opening Bowler: {isBowlingFirst}</p>
+                                <div className="flex-col gap-2">
+                                    <label>Bowler</label>
+                                    <PlayerCardSelector
+                                        options={openingBowlerOptions}
+                                        value={bowler}
+                                        ariaLabel="Select opening bowler"
+                                        getOptionLabel={getPlayerOptionLabel}
+                                        onChange={setBowler}
+                                    />
+                                </div>
                             </div>
 
                             <button type="submit" className="btn btn-primary ms-btn-top-lg" disabled={!state.scorerPassword}>

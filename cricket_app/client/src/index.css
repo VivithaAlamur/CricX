@@ -501,6 +501,67 @@ input::placeholder {
   flex-shrink: 0;
 }
 
+.ms-confirm-modal {
+  max-width: 400px;
+  width: 100%;
+  overflow: hidden;
+  text-align: center;
+  padding: 0;
+}
+
+.ms-confirm-modal-header {
+  background: var(--accent-gradient);
+  padding: 1.25rem 1.75rem 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.ms-confirm-modal-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.18);
+  border: 1.5px solid rgba(255, 255, 255, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+}
+
+.ms-confirm-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0;
+  letter-spacing: 0.01em;
+}
+
+.ms-confirm-body {
+  padding: 1.4rem 1.75rem 1.75rem;
+  background: #ffffff;
+}
+
+.ms-confirm-text {
+  margin-bottom: 1.5rem;
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  line-height: 1.55;
+}
+
+.ms-confirm-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+}
+
+.ms-confirm-actions .btn {
+  min-width: 110px;
+  font-size: 0.9rem;
+  padding: 10px 22px;
+}
+
 .ms-player-list {
   max-height: 44vh;
   overflow-y: auto;
@@ -669,7 +730,7 @@ input::placeholder {
   align-items: center;
   justify-content: space-between;
   gap: 0.8rem;
-  margin-bottom: 1rem;
+  margin-bottom: 1.25rem;
 }
 
 .ms-toss-header .ms-toss-title {
@@ -683,48 +744,334 @@ input::placeholder {
   font-size: 0.85rem;
 }
 
+/* Teams VS Banner */
+.ms-toss-vs-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+  padding: 0.75rem 1rem;
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.07), rgba(14, 165, 233, 0.07));
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+}
+
+.ms-toss-team-name {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  flex: 1;
+  text-align: center;
+}
+
+.ms-toss-vs-badge {
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: white;
+  background: var(--accent-gradient);
+  padding: 0.25rem 0.6rem;
+  border-radius: var(--radius-pill);
+  letter-spacing: 0.05em;
+  flex-shrink: 0;
+}
+
+/* Coin */
 .ms-toss-flip-block {
   padding-bottom: 1.5rem;
   border-bottom: 1px solid var(--border-light);
 }
 
-.ms-toss-coin {
-  width: 80px;
-  height: 80px;
+.ms-toss-coin-wrap {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
   background: var(--accent-gradient);
-  font-size: 1.5rem;
-  font-weight: 700;
+  box-shadow: 0 8px 24px rgba(37, 99, 235, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.8rem;
+  transition: box-shadow 0.3s ease;
 }
 
-.ms-toss-coin.has-result {
-  background: var(--accent-success);
+.ms-toss-coin-wrap.is-spinning {
+  animation: tossSpin 0.6s linear infinite;
+}
+
+.ms-toss-coin-wrap.has-result {
+  background: linear-gradient(135deg, var(--accent-success), #059669);
+  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.35);
+}
+
+@keyframes tossSpin {
+  0%   { transform: rotateY(0deg) scale(1); }
+  50%  { transform: rotateY(90deg) scale(0.85); }
+  100% { transform: rotateY(180deg) scale(1); }
+}
+
+.ms-toss-coin-emoji {
+  line-height: 1;
+  display: block;
+}
+
+.ms-toss-coin-emoji svg {
+  width: 56px;
+  height: 56px;
+  display: block;
+}
+
+.ms-toss-result-badge {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--accent-success);
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  padding: 0.3rem 0.9rem;
+  border-radius: var(--radius-pill);
+}
+
+.ms-toss-flip-btn {
+  min-width: 190px;
+}
+
+/* Toss form card */
+.ms-toss-form-card {
+  padding: 1.35rem;
+  text-align: left;
+}
+
+.ms-toss-form-card .ms-toss-note {
+  margin-bottom: 0.9rem;
+}
+
+.ms-toss-form-card .flex-col.gap-2 {
+  gap: 0.45rem;
+}
+
+.ms-toss-form-card label {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  padding-left: 0.1rem;
+}
+
+.ms-toss-form-card select {
+  min-height: 46px;
+  padding: 0.78rem 0.95rem;
+  border-radius: 10px;
 }
 
 .ms-toss-note {
-  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--accent-primary);
   margin-bottom: 1rem;
+}
+
+.ms-toss-field-label {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.ms-toss-team-select {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.ms-toss-team-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.85rem 1rem;
+  border-radius: var(--radius-md);
+  border: 2px solid var(--border-color);
+  background: #ffffff;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.18s ease, background 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+  text-align: center;
+  word-break: break-word;
+  line-height: 1.3;
+}
+
+.ms-toss-team-btn:hover {
+  border-color: var(--accent-primary);
+  background: var(--bg-tertiary);
+}
+
+.ms-toss-team-btn.is-selected {
+  border-color: var(--accent-primary);
+  background: var(--accent-gradient);
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.28);
+}
+
+.ms-toss-decision-btn {
+  flex-direction: row;
+  gap: 0.5rem;
+  padding: 1rem 1rem;
+  font-size: 0.92rem;
+}
+
+.ms-toss-decision-btn svg {
+  flex-shrink: 0;
+}
+
+.ms-toss-decision-group {
+  padding: 0.35rem 0.2rem 0.15rem;
+}
+
+.ms-toss-winner-group {
+  margin-bottom: 0.45rem;
+}
+
+.ms-toss-optional {
+  font-weight: 400;
+  color: var(--text-muted);
+  font-size: 0.85em;
 }
 
 .ms-btn-top-sm {
   margin-top: 0.5rem;
 }
 
+/* Winner card */
 .ms-toss-winner-card {
   padding: 1.5rem;
   border-left: 4px solid var(--accent-success);
+  text-align: center;
+  max-width: 360px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.ms-toss-winner-icon {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
 }
 
 .ms-toss-winner-title {
   color: var(--text-primary);
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.4rem;
+  font-size: 1.38rem;
+}
+
+.ms-toss-winner-inline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  width: 100%;
 }
 
 .ms-toss-winner-text {
   color: var(--text-secondary);
+  font-size: 1.08rem;
 }
 
 .ms-start-form {
+  margin-top: 0.55rem;
+}
+
+.ms-start-form .ms-toss-form-card {
+  padding: 1.2rem;
+}
+
+.ms-start-form .ms-toss-note {
+  font-size: 1rem;
+  letter-spacing: 0.03em;
+}
+
+.ms-start-form .ms-toss-form-card label {
+  font-size: 1.06rem;
+}
+
+.ms-start-form .ms-toss-form-card select {
+  font-size: 1.05rem;
+}
+
+.ms-start-form .ms-bowler-card {
+  margin-top: 0.55rem;
+}
+
+.ms-player-card-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.55rem;
+  max-height: 212px;
+  overflow-y: auto;
+  padding: 0.15rem 0.1rem;
+}
+
+.ms-player-card {
+  width: 100%;
+  text-align: left;
+  padding: 0.78rem 0.9rem;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: #ffffff;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease, transform 0.12s ease;
+}
+
+.ms-player-card:hover {
+  border-color: var(--accent-primary);
+  background: var(--bg-tertiary);
+}
+
+.ms-player-card:active {
+  transform: scale(0.995);
+}
+
+.ms-player-card.is-selected {
+  border-color: var(--accent-primary);
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.1), rgba(14, 165, 233, 0.12));
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.18);
+}
+
+.ms-player-card:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  background: #f8fafc;
+}
+
+.ls-change-player-list {
+  max-height: 240px;
+}
+
+.ls-next-batter-list {
+  max-height: 190px;
+}
+
+.ms-opening-batters-sections {
+  gap: 0;
+}
+
+.ms-opener-block {
+  gap: 0.55rem;
+}
+
+.ms-opener-block + .ms-opener-block {
   margin-top: 1rem;
+  padding-top: 0.9rem;
+  border-top: 1.5px dashed rgba(51, 65, 85, 0.45);
+}
+
+.ms-opener-block .ms-player-card-list {
+  margin-top: 0;
 }
 
 .ms-start-heading {
@@ -958,6 +1305,22 @@ input::placeholder {
   color: white;
 }
 
+.ls-action-wicket {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  font-size: 1.02rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.ls-wicket-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
 /* Micro animations */
 @keyframes pulse {
   0% {
@@ -1142,8 +1505,64 @@ input::placeholder {
 
 /* Live Scoring */
 .ls-shell {
-  max-width: 820px;
+  max-width: 860px;
   margin: 0 auto;
+  padding-bottom: 0.65rem;
+}
+
+.ls-celebration-pop {
+  position: fixed;
+  inset: 0;
+  z-index: 3200;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ls-celebration-card {
+  border-radius: 16px;
+  padding: 0.55rem;
+  background: rgba(15, 23, 42, 0.62);
+  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.35);
+  animation: lsCelebrationPop 2s ease forwards;
+}
+
+.ls-celebration-gif {
+  width: clamp(130px, 26vw, 190px);
+  height: clamp(90px, 18vw, 130px);
+  object-fit: cover;
+  display: block;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.42);
+}
+
+.ls-celebration-text {
+  margin-top: 0.35rem;
+  text-align: center;
+  color: #fff;
+  font-size: 0.95rem;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+}
+
+@keyframes lsCelebrationPop {
+  0% {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.92);
+  }
+  10% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  85% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.95);
+  }
 }
 
 .ls-score-panel,
@@ -1155,6 +1574,77 @@ input::placeholder {
 .ls-next-bowler-card,
 .ls-actions-card {
   margin-bottom: 0.85rem;
+}
+
+.ls-ib-shell {
+  padding: clamp(1.1rem, 5vw, 2rem);
+  max-width: 680px;
+  margin: 0 auto;
+}
+
+.ls-ib-title {
+  text-align: center;
+  font-size: clamp(2rem, 6vw, 2.7rem);
+  margin-bottom: 0.95rem;
+}
+
+.ls-ib-target-card {
+  text-align: center;
+  margin-bottom: 1.15rem;
+  padding: 0.95rem 1rem;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  background: linear-gradient(145deg, rgba(16, 185, 129, 0.1), rgba(37, 99, 235, 0.06));
+}
+
+.ls-ib-target-label {
+  color: var(--text-muted);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  margin-bottom: 0.25rem;
+}
+
+.ls-ib-target-text {
+  margin: 0;
+  font-size: 1.2rem;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.ls-ib-target-value {
+  color: var(--accent-success);
+  font-size: 1.5rem;
+  font-weight: 800;
+}
+
+.ls-ib-section-card {
+  padding: 1.05rem;
+}
+
+.ls-ib-section-card + .ls-ib-section-card {
+  margin-top: 0.45rem;
+}
+
+.ls-ib-section-title {
+  color: var(--accent-primary);
+  margin-bottom: 0.7rem;
+  font-size: 1.02rem;
+}
+
+.ls-ib-subsection {
+  margin-top: 0.85rem;
+  padding-top: 0.75rem;
+  border-top: 1px dashed rgba(51, 65, 85, 0.32);
+}
+
+.ls-ib-list {
+  max-height: 190px;
+}
+
+.ls-ib-cta {
+  margin-top: 0.9rem;
 }
 
 .ls-next-batter-card,
@@ -1176,7 +1666,9 @@ input::placeholder {
 }
 
 .ls-score-panel {
-  padding: 1.25rem;
+  padding: 1.35rem;
+  border: 1px solid var(--border-light);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(236, 245, 255, 0.82));
 }
 
 .ls-score-top {
@@ -1194,7 +1686,7 @@ input::placeholder {
   font-size: clamp(2.7rem, 11vw, 4.4rem);
   font-weight: 900;
   line-height: 1;
-  letter-spacing: -1px;
+  letter-spacing: -0.5px;
 }
 
 .ls-score-slash {
@@ -1226,7 +1718,7 @@ input::placeholder {
 .ls-over-label {
   color: var(--text-muted);
   font-weight: 700;
-  font-size: 1.04rem;
+  font-size: 1.08rem;
   margin-top: 0.35rem;
 }
 
@@ -1296,14 +1788,16 @@ input::placeholder {
 
 .ls-player-panel {
   padding: 1.35rem;
+  border: 1px solid var(--border-light);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(243, 248, 255, 0.85));
 }
 
 .ls-card-kicker {
-  font-size: 0.9rem;
+  font-size: 0.94rem;
   text-transform: uppercase;
   color: var(--text-muted);
-  letter-spacing: 1px;
-  margin-bottom: 0px;
+  letter-spacing: 1.1px;
+  margin-bottom: 0.2rem;
 }
 
 .ls-player-row {
@@ -1322,7 +1816,7 @@ input::placeholder {
 }
 
 .ls-batter-name {
-  font-size: 1.22rem;
+  font-size: 1.28rem;
   font-weight: 650;
 }
 
@@ -1331,19 +1825,46 @@ input::placeholder {
 }
 
 .ls-player-stats {
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   color: var(--text-secondary);
   margin-top: 4px;
+  display: flex;
+  flex-wrap: wrap;
+  row-gap: 2px;
 }
 
 .ls-player-stats-secondary {
-  font-size: 0.82rem;
+  font-size: 0.86rem;
+}
+
+.ls-next-select-card {
+  padding: 1.35rem;
+  margin-top: 1rem;
+}
+
+.ls-next-select-title {
+  margin-bottom: 0.95rem;
+  color: var(--text-primary);
+  font-size: 1.1rem;
+  font-weight: 750;
+}
+
+.ls-next-select-title-bowler {
+  color: var(--accent-primary);
+}
+
+.ls-next-select-cta {
+  width: 100%;
+  padding: 0.9rem 1rem;
+  margin-top: 0.55rem;
 }
 
 .ls-change-btn {
   padding: 0.28rem 0.7rem;
   font-size: 0.8rem;
   min-height: 34px;
+  min-width: 92px;
+  font-weight: 700;
 }
 
 .ls-change-btn-bowler {
@@ -1929,6 +2450,130 @@ input::placeholder {
   font-size: 0.8rem;
   font-weight: 700;
   color: var(--accent-danger);
+}
+
+.ls-change-player-modal {
+  max-width: 420px;
+  width: 100%;
+  padding: 0;
+  overflow: hidden;
+}
+
+.ls-change-player-modal-header {
+  background: var(--accent-gradient);
+  padding: 1.1rem 1.25rem 0.9rem;
+}
+
+.ls-change-player-modal-title {
+  color: #ffffff;
+  font-size: 1.35rem;
+  font-weight: 800;
+  margin: 0;
+}
+
+.ls-change-player-modal-body {
+  background: #ffffff;
+  padding: 1.15rem 1.25rem 1.25rem;
+}
+
+.ls-change-player-label {
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.ls-change-player-cancel {
+  margin-top: 0.5rem;
+}
+
+.ls-wicket-modal {
+  max-width: 420px;
+  width: 100%;
+  padding: 0;
+  overflow: hidden;
+}
+
+.ls-wicket-modal-header {
+  background: var(--accent-gradient);
+  padding: 1.15rem 1.35rem 1rem;
+}
+
+.ls-wicket-modal-title {
+  color: #ffffff;
+  font-size: 1.35rem;
+  font-weight: 800;
+  margin: 0;
+}
+
+.ls-wicket-modal-body {
+  background: #ffffff;
+  padding: 1.2rem 1.35rem 1.35rem;
+}
+
+.ls-wicket-label {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.ls-wicket-select {
+  width: 100%;
+  padding: 0.75rem;
+  border-radius: 10px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+}
+
+.ls-wicket-radio-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 1rem;
+  padding: 1rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-light);
+  background: var(--bg-secondary);
+  cursor: pointer;
+}
+
+.ls-wicket-radio-row + .ls-wicket-radio-row {
+  margin-top: 0.6rem;
+}
+
+.ls-wicket-dismissed-block {
+  margin-top: 0.35rem;
+}
+
+.ls-wicket-radio-row.is-selected {
+  border: 2px solid var(--accent-primary);
+  background: rgba(56, 189, 248, 0.1);
+}
+
+.ls-wicket-radio {
+  width: 20px;
+  height: 20px;
+  transform: scale(1.2);
+  margin: 0;
+  padding: 0;
+  flex-shrink: 0;
+  accent-color: var(--accent-primary);
+}
+
+.ls-wicket-radio-text {
+  font-weight: 600;
+}
+
+.ls-wicket-actions {
+  margin-top: 1.4rem;
+  border-top: 1px solid var(--border-light);
+  padding-top: 1rem;
+}
+
+.ls-wicket-action-btn {
+  flex: 1;
+  padding: 0.9rem;
+  font-size: 1rem;
 }
 
 .ls-edit-action-btn {

@@ -1,9 +1,29 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useMatch, SCORER_SESSION_ID } from '../store/MatchContext';
 import DetailedScorecard from '../components/DetailedScorecard';
+import PlayerCardSelector from '../components/PlayerCardSelector';
+
+function WicketActionIcon() {
+    return (
+        <svg viewBox="0 0 24 24" aria-hidden="true" className="ls-wicket-icon">
+            <g fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="7" y1="9" x2="7" y2="18" />
+                <line x1="12" y1="9" x2="12" y2="18" />
+                <line x1="17" y1="9" x2="17" y2="18" />
+                <line x1="5.7" y1="9" x2="8.3" y2="9" />
+                <line x1="10.7" y1="9" x2="13.3" y2="9" />
+                <line x1="15.7" y1="9" x2="18.3" y2="9" />
+                <circle cx="16.8" cy="5.3" r="2.1" />
+                <path d="M15.8 4.5c.9.2 1.7.9 2 1.8" />
+            </g>
+        </svg>
+    );
+}
 
 export default function LiveScoring() {
     const { state, dispatch } = useMatch();
+    const celebrationTimeoutRef = useRef<number | null>(null);
+    const [celebrationType, setCelebrationType] = useState<4 | 6 | 'W' | null>(null);
     const stopWheelPropagation = (e: React.WheelEvent<HTMLSelectElement>) => {
         e.stopPropagation();
     };
@@ -112,6 +132,27 @@ export default function LiveScoring() {
     const [tempJokerPlayer, setTempJokerPlayer] = useState<string | null>(null);
     const [availablePlayersForSquad, setAvailablePlayersForSquad] = useState<{ id: number, name: string }[]>([]);
 
+    const triggerCelebration = (type: 4 | 6 | 'W') => {
+        setCelebrationType(type);
+
+        if (celebrationTimeoutRef.current) {
+            window.clearTimeout(celebrationTimeoutRef.current);
+        }
+
+        celebrationTimeoutRef.current = window.setTimeout(() => {
+            setCelebrationType(null);
+            celebrationTimeoutRef.current = null;
+        }, 2000);
+    };
+
+    useEffect(() => {
+        return () => {
+            if (celebrationTimeoutRef.current) {
+                window.clearTimeout(celebrationTimeoutRef.current);
+            }
+        };
+    }, []);
+
     useEffect(() => {
         if (showEditSquadsModal) {
             fetch('/api/players')
@@ -170,6 +211,12 @@ export default function LiveScoring() {
             }
 
             dispatch({ type: 'ADD_BALL', payload: { runs: finalRuns, extras: finalExtras, isWicket, label } });
+
+            if (isWicket) {
+                triggerCelebration('W');
+            } else if (finalRuns === 4 || finalRuns === 6) {
+                triggerCelebration(finalRuns);
+            }
 
             // We need to calculate the *new* score directly here to pass to handleInningsBreak,
             // because state.score.runs is stale in this closure.
@@ -455,37 +502,68 @@ export default function LiveScoring() {
 
     if (showInningsBreak || state.status === 'INNINGS_BREAK') {
         return (
-            <div className="glass-panel text-center" style={{ padding: '3rem', maxWidth: '600px', margin: '0 auto' }}>
-                <h2 className="text-gradient" style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>Innings Break</h2>
-                <h3 style={{ fontSize: '1.5rem', marginBottom: '2rem' }}>Target: <span style={{ color: 'var(--accent-success)' }}>{state.target}</span> in {state.config.overs} overs</h3>
+            <div className="glass-panel ls-ib-shell">
+                <h2 className="text-gradient ls-ib-title">Innings Break</h2>
+
+                <div className="ls-ib-target-card">
+                    <p className="ls-ib-target-label">Target</p>
+                    <p className="ls-ib-target-text"><span className="ls-ib-target-value">{state.target}</span> in {state.config.overs} overs</p>
+                </div>
 
                 <form onSubmit={startSecondInnings} className="flex-col gap-4 text-left">
-                    <h4 style={{ color: 'var(--accent-primary)', marginBottom: '0.5rem' }}>Openers ({nextBattingTeam})</h4>
-                    <div className="flex-col gap-2">
-                        <label>Striker</label>
-                        <select value={d1} onChange={e => setD1(e.target.value)} required>
-                            <option value="" disabled>Select Player...</option>
-                            {nextBattingSquad.map(p => <option key={`d1-${p}`} value={p}>{p}</option>)}
-                        </select>
-                    </div>
-                    <div className="flex-col gap-2">
-                        <label>Non-Striker (Optional)</label>
-                        <select value={d2} onChange={e => setD2(e.target.value)}>
-                            <option value="">None / One Batter Mode</option>
-                            {nextBattingSquad.map(p => <option key={`d2-${p}`} value={p}>{p}</option>)}
-                        </select>
+                    <div className="glass-card ls-ib-section-card">
+                        <h4 className="ls-ib-section-title">Opening Batters: {nextBattingTeam}</h4>
+                        <div className="flex-col gap-2">
+                            <label>Striker</label>
+                            <PlayerCardSelector
+                                options={nextBattingSquad}
+                                value={d1}
+                                ariaLabel="Select innings break striker"
+                                disabledOptions={d2 ? [d2] : []}
+                                listClassName="ls-ib-list"
+                                onChange={(nextStriker) => {
+                                    setD1(nextStriker);
+                                    if (d2 && d2 === nextStriker) {
+                                        setD2('');
+                                    }
+                                }}
+                            />
+                        </div>
+                        <div className="flex-col gap-2 ls-ib-subsection">
+                            <label>Non-Striker <span className="ms-toss-optional">(Optional)</span></label>
+                            <PlayerCardSelector
+                                options={nextBattingSquad}
+                                value={d2}
+                                ariaLabel="Select innings break non-striker"
+                                includeNoneOption={true}
+                                noneOptionLabel="None / One Batter Mode"
+                                disabledOptions={d1 ? [d1] : []}
+                                listClassName="ls-ib-list"
+                                onChange={(nextNonStriker) => {
+                                    setD2(nextNonStriker);
+                                    if (nextNonStriker && d1 === nextNonStriker) {
+                                        setD1('');
+                                    }
+                                }}
+                            />
+                        </div>
                     </div>
 
-                    <h4 style={{ color: 'var(--accent-primary)', marginTop: '1rem', marginBottom: '0.5rem' }}>Opening Bowler ({nextBowlingTeam})</h4>
-                    <div className="flex-col gap-2">
-                        <label>Bowler Name</label>
-                        <select value={b1} onChange={e => setB1(e.target.value)} required>
-                            <option value="" disabled>Select Player...</option>
-                            {nextBowlingSquad.map(p => <option key={`b1-${p}`} value={p}>{p}</option>)}
-                        </select>
+                    <div className="glass-card ls-ib-section-card">
+                        <h4 className="ls-ib-section-title">Opening Bowler: {nextBowlingTeam}</h4>
+                        <div className="flex-col gap-2">
+                            <label>Bowler</label>
+                            <PlayerCardSelector
+                                options={nextBowlingSquad}
+                                value={b1}
+                                ariaLabel="Select innings break opening bowler"
+                                listClassName="ls-ib-list"
+                                onChange={setB1}
+                            />
+                        </div>
                     </div>
 
-                    <button type="submit" className="btn btn-primary" style={{ marginTop: '1.5rem' }}>
+                    <button type="submit" className="btn btn-primary ls-ib-cta">
                         Start Run Chase
                     </button>
                 </form>
@@ -502,11 +580,7 @@ export default function LiveScoring() {
             .filter(Boolean)
     );
     const activeBatters = new Set([state.currentBatter, state.nonStriker].filter(Boolean));
-    const unavailableNextBatters = new Set([...dismissedBatters, ...activeBatters]);
-    const availableNextBatters = battingSquad.filter((p) => !unavailableNextBatters.has(p));
-    const selectableNextBatters = availableNextBatters.length > 0
-        ? availableNextBatters
-        : battingSquad.filter((p) => !activeBatters.has(p));
+    const needsOpeningPairSelection = !state.currentBatter && !state.nonStriker && battingSquad.length > 1;
     
     const getBatterStats = (playerName: string) => {
         let runs = 0, balls = 0, fours = 0, sixes = 0;
@@ -539,9 +613,28 @@ export default function LiveScoring() {
     const strikerStats = state.currentBatter ? getBatterStats(state.currentBatter) : null;
     const nonStrikerStats = state.nonStriker ? getBatterStats(state.nonStriker) : null;
     const bowlerStats = state.currentBowler ? getBowlerStats(state.currentBowler) : null;
+    const celebrationGifUrl = celebrationType === 'W'
+        ? 'https://media.giphy.com/media/l3vR6aasfs0Ae3qdG/giphy.gif'
+        : celebrationType === 6
+        ? 'https://media.giphy.com/media/3o6fJ1BM7R2EBRDnxK/giphy.gif'
+        : 'https://media.giphy.com/media/26BRv0ThflsHCqDrG/giphy.gif';
+    const celebrationLabel = celebrationType === 'W' ? 'WICKET!' : celebrationType === 6 ? 'SIX!' : 'FOUR!';
+    const celebrationAlt = celebrationType === 'W' ? 'Wicket celebration' : celebrationType === 6 ? 'Six celebration' : 'Four celebration';
 
     return (
         <div className="flex-col gap-6 ls-shell">
+            {celebrationType && (
+                <div className="ls-celebration-pop" aria-live="polite" aria-atomic="true">
+                    <div className="ls-celebration-card">
+                        <img
+                            src={celebrationGifUrl}
+                            alt={celebrationAlt}
+                            className="ls-celebration-gif"
+                        />
+                        <div className="ls-celebration-text">{celebrationLabel}</div>
+                    </div>
+                </div>
+            )}
 
             {/* Score Header */}
             <div className="glass-panel ls-score-panel">
@@ -739,39 +832,63 @@ export default function LiveScoring() {
 
             {/* Action Controls */}
             {needsNextBatter ? (
-                <div className="glass-card ls-next-batter-card" style={{ padding: '1.5rem', marginTop: '1rem' }}>
-                    <h3 style={{ marginBottom: '1rem', color: 'var(--accent-danger)' }}>
+                <div className="glass-card ls-next-batter-card ls-next-select-card">
+                    <h3 className="ls-next-select-title">
                         {(!state.currentBatter && !state.nonStriker) 
                             ? `Select Opening Batters (${battingTeam})` 
                             : (!state.currentBatter ? `Select Striker (${battingTeam})` : `Select Non-Striker (${battingTeam})`)}
                     </h3>
                     <form onSubmit={submitNextBatter} className="flex-col gap-4">
-                        <div className="flex gap-4">
+                        <div className="flex-col gap-4">
                             {!state.currentBatter && (
-                                <select value={nextBatterInput} onChange={e => setNextBatterInput(e.target.value)} onWheel={stopWheelPropagation} required style={{ flex: 1 }}>
-                                    <option value="" disabled>Select {(!state.currentBatter && !state.nonStriker) ? 'Striker' : 'Batter'}...</option>
-                                    {selectableNextBatters.filter(p => p !== nextBatter2Input).map(p => <option key={`nb1-${p}`} value={p}>{p}</option>)}
-                                </select>
+                                <div className="flex-col gap-2">
+                                    <PlayerCardSelector
+                                        options={battingSquad}
+                                        value={nextBatterInput}
+                                        ariaLabel="Select next striker"
+                                        listClassName="ls-next-batter-list"
+                                        disabledOptions={[
+                                            ...Array.from(dismissedBatters),
+                                            ...Array.from(activeBatters),
+                                            ...(nextBatter2Input ? [nextBatter2Input] : [])
+                                        ]}
+                                        getOptionLabel={(playerName) => dismissedBatters.has(playerName) ? `${playerName} (Out)` : playerName}
+                                        onChange={setNextBatterInput}
+                                    />
+                                </div>
                             )}
                             {(!state.nonStriker && (state.currentBatter || battingSquad.length > 1)) && (
-                                <select 
-                                    value={!state.currentBatter ? nextBatter2Input : nextBatterInput} 
-                                    onChange={e => !state.currentBatter ? setNextBatter2Input(e.target.value) : setNextBatterInput(e.target.value)} 
-                                    onWheel={stopWheelPropagation}
-                                    required 
-                                    style={{ flex: 1 }}
-                                >
-                                    <option value="" disabled>Select Non-Striker...</option>
-                                    {selectableNextBatters.filter(p => !state.currentBatter ? p !== nextBatterInput : p !== state.currentBatter).map(p => <option key={`nb2-${p}`} value={p}>{p}</option>)}
-                                </select>
+                                <div className="flex-col gap-2">
+                                    <label>Select Non-Striker</label>
+                                    <PlayerCardSelector
+                                        options={battingSquad}
+                                        value={!state.currentBatter ? nextBatter2Input : nextBatterInput}
+                                        ariaLabel="Select next non-striker"
+                                        listClassName="ls-next-batter-list"
+                                        disabledOptions={[
+                                            ...Array.from(dismissedBatters),
+                                            ...Array.from(activeBatters),
+                                            ...(!state.currentBatter && nextBatterInput ? [nextBatterInput] : []),
+                                            ...(state.currentBatter ? [state.currentBatter] : [])
+                                        ]}
+                                        getOptionLabel={(playerName) => dismissedBatters.has(playerName) ? `${playerName} (Out)` : playerName}
+                                        onChange={(nextPlayer) => !state.currentBatter ? setNextBatter2Input(nextPlayer) : setNextBatterInput(nextPlayer)}
+                                    />
+                                </div>
                             )}
                         </div>
-                        <button type="submit" className="btn btn-danger" style={{ width: '100%', padding: '0.85rem 1rem' }}>Confirm Batter(s)</button>
+                        <button
+                            type="submit"
+                            className="btn btn-primary ls-next-select-cta"
+                            disabled={!nextBatterInput || (needsOpeningPairSelection && !nextBatter2Input)}
+                        >
+                            Confirm Batter(s)
+                        </button>
                     </form>
                 </div>
             ) : needsNextBowler ? (
-                <div className="glass-card ls-next-bowler-card" style={{ padding: '1.5rem', marginTop: '1rem' }}>
-                    <h3 style={{ marginBottom: '1rem', color: 'var(--accent-primary)' }}>
+                <div className="glass-card ls-next-bowler-card ls-next-select-card">
+                    <h3 className="ls-next-select-title ls-next-select-title-bowler">
                         {state.score.legalBalls === 0 ? `Select Opening Bowler (${bowlingTeam})` : `End of Over! Select Next Bowler (${bowlingTeam})`}
                     </h3>
                     <form onSubmit={submitNextBowler} className="flex gap-4">
@@ -811,7 +928,10 @@ export default function LiveScoring() {
                             setDismissedPlayer(state.currentBatter || '');
                             setFielder('');
                             setShowWicketModal(true);
-                        }}>WICKET</button>
+                        }}>
+                            <WicketActionIcon />
+                            <span>Wicket</span>
+                        </button>
                     </div>
                 </div>
             )}
@@ -1100,34 +1220,52 @@ export default function LiveScoring() {
             )}
 
             {changingPlayerType && (
-                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)' }}>
-                    <div className="glass-panel" style={{ padding: '2rem', maxWidth: '400px', width: '90%' }}>
-                        <div className="flex-between" style={{ marginBottom: '1.5rem' }}>
-                            <h2 style={{ fontSize: '1.5rem' }}>Change {changingPlayerType === 'bowler' ? 'Bowler' : (changingPlayerType === 'striker' ? 'Striker' : 'Non-Striker')}</h2>
-                            <button onClick={() => setChangingPlayerType(null)} className="btn btn-secondary ls-modal-close">✕</button>
+                <div className="ls-edit-overlay ls-change-modal-overlay">
+                    <div className="glass-panel ls-change-player-modal">
+                        <div className="ls-change-player-modal-header">
+                            <div className="flex-between">
+                                <h2 className="ls-change-player-modal-title">Change {changingPlayerType === 'bowler' ? 'Bowler' : (changingPlayerType === 'striker' ? 'Striker' : 'Non-Striker')}</h2>
+                                <button onClick={() => setChangingPlayerType(null)} className="btn btn-secondary ls-modal-close">✕</button>
+                            </div>
                         </div>
 
-                        <div className="flex-col gap-4">
-                            <label>Select New Player</label>
-                            <select
-                                autoFocus
-                                onChange={(e) => {
+                        <div className="ls-change-player-modal-body">
+                            <div className="flex-col gap-4">
+                                <label className="ls-change-player-label">Select New Player</label>
+                            <PlayerCardSelector
+                                options={changingPlayerType === 'bowler' ? bowlingSquad : battingSquad}
+                                value={
+                                    changingPlayerType === 'bowler'
+                                        ? state.currentBowler
+                                        : changingPlayerType === 'striker'
+                                            ? state.currentBatter
+                                            : state.nonStriker
+                                }
+                                ariaLabel="Select new player"
+                                listClassName="ls-change-player-list"
+                                disabledOptions={
+                                    changingPlayerType === 'bowler'
+                                        ? []
+                                        : Array.from(dismissedBatters)
+                                }
+                                getOptionLabel={(playerName) =>
+                                    changingPlayerType === 'bowler'
+                                        ? playerName
+                                        : dismissedBatters.has(playerName)
+                                            ? `${playerName} (Out)`
+                                            : playerName
+                                }
+                                onChange={(nextPlayer) => {
                                     if (changingPlayerType === 'bowler') {
-                                        dispatch({ type: 'CHANGE_BOWLER', payload: { newPlayer: e.target.value } });
+                                        dispatch({ type: 'CHANGE_BOWLER', payload: { newPlayer: nextPlayer } });
                                     } else {
-                                        dispatch({ type: 'CHANGE_BATTER', payload: { isStriker: changingPlayerType === 'striker', newPlayer: e.target.value } });
+                                        dispatch({ type: 'CHANGE_BATTER', payload: { isStriker: changingPlayerType === 'striker', newPlayer: nextPlayer } });
                                     }
                                     setChangingPlayerType(null);
                                 }}
-                                onWheel={stopWheelPropagation}
-                                style={{ padding: '0.75rem', borderRadius: '8px', background: 'var(--bg-secondary)', color: 'var(--text-primary)', border: '1px solid var(--border-color)' }}
-                            >
-                                <option value="">Select Player...</option>
-                                {(changingPlayerType === 'bowler' ? bowlingSquad : battingSquad).map(p => (
-                                    <option key={p} value={p}>{p}</option>
-                                ))}
-                            </select>
-                            <button onClick={() => setChangingPlayerType(null)} className="btn btn-secondary" style={{ marginTop: '0.5rem' }}>Cancel</button>
+                            />
+                                <button onClick={() => setChangingPlayerType(null)} className="btn btn-secondary ls-change-player-cancel">Cancel</button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1135,61 +1273,77 @@ export default function LiveScoring() {
 
             {/* Wicket Details Modal */}
             {showWicketModal && (
-                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(8px)', padding: '1rem' }}>
-                    <div className="glass-panel" style={{ padding: '2rem', maxWidth: '400px', width: '100%' }}>
-                        <h2 style={{ fontSize: '1.5rem', marginBottom: '1.5rem', color: 'var(--accent-danger)' }}>Wicket Details</h2>
-                        
-                        <div className="flex-col gap-4">
-                            <div>
-                                <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>Wicket Type</label>
-                                <select value={wicketType} onChange={e => setWicketType(e.target.value)} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', background: 'var(--bg-secondary)', color: 'var(--text-primary)', border: '1px solid var(--border-color)' }}>
-                                    <option value="bowled">Bowled</option>
-                                    <option value="caught">Caught</option>
-                                    <option value="run_out">Run Out</option>
-                                </select>
-                            </div>
-
-                            <div>
-                                <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>Who was dismissed?</label>
-                                <div className="flex-col gap-3">
-                                    <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: '1rem', padding: '1rem', borderRadius: 'var(--radius-md)', border: dismissedPlayer === state.currentBatter ? '2px solid var(--accent-primary)' : '1px solid var(--border-light)', background: dismissedPlayer === state.currentBatter ? 'rgba(56, 189, 248, 0.1)' : 'var(--bg-secondary)', cursor: 'pointer' }}>
-                                        <input type="radio" style={{ width: '20px', height: '20px', transform: 'scale(1.3)', margin: 0, padding: 0, flexShrink: 0, accentColor: 'var(--accent-primary)' }} value={state.currentBatter || ''} checked={dismissedPlayer === state.currentBatter} onChange={e => setDismissedPlayer(e.target.value)} />
-                                        <span style={{ fontWeight: 600 }}>Striker ({state.currentBatter})</span>
-                                    </label>
-                                    {state.nonStriker && (
-                                        <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: '1rem', marginTop: '0.5rem', padding: '1rem', borderRadius: 'var(--radius-md)', border: dismissedPlayer === state.nonStriker ? '2px solid var(--accent-primary)' : '1px solid var(--border-light)', background: dismissedPlayer === state.nonStriker ? 'rgba(56, 189, 248, 0.1)' : 'var(--bg-secondary)', cursor: 'pointer' }}>
-                                            <input type="radio" style={{ width: '20px', height: '20px', transform: 'scale(1.3)', margin: 0, padding: 0, flexShrink: 0, accentColor: 'var(--accent-primary)' }} value={state.nonStriker} checked={dismissedPlayer === state.nonStriker} onChange={e => setDismissedPlayer(e.target.value)} />
-                                            <span style={{ fontWeight: 600 }}>Non-Striker ({state.nonStriker})</span>
-                                        </label>
-                                    )}
-                                </div>
-                            </div>
-
-                            {(wicketType === 'caught' || wicketType === 'run_out') && (
-                                <div>
-                                    <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>Fielder (Optional)</label>
-                                    <select value={fielder} onChange={e => setFielder(e.target.value)} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', background: 'var(--bg-secondary)', color: 'var(--text-primary)', border: '1px solid var(--border-color)' }}>
-                                        <option value="">-- Select Fielder --</option>
-                                        {bowlingSquad.map(player => (
-                                            <option key={player} value={player}>{player}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                            )}
+                <div className="ls-edit-overlay ls-wicket-overlay">
+                    <div className="glass-panel ls-wicket-modal">
+                        <div className="ls-wicket-modal-header">
+                            <h2 className="ls-wicket-modal-title">Wicket Details</h2>
                         </div>
 
-                        <div className="flex gap-4" style={{ marginTop: '2.5rem', borderTop: '1px solid var(--border-light)', paddingTop: '1.5rem' }}>
-                            <button 
-                                onClick={() => {
-                                    handleAction(0, 'W', 0, true, wicketType, dismissedPlayer, fielder || null);
-                                    setShowWicketModal(false);
-                                }} 
-                                className="btn btn-danger" 
-                                style={{ flex: 1, padding: '1rem', fontSize: '1rem', fontWeight: 600 }}
-                            >
-                                Confirm Wicket
-                            </button>
-                            <button onClick={() => setShowWicketModal(false)} className="btn btn-secondary" style={{ flex: 1, padding: '1rem', fontSize: '1rem' }}>Cancel</button>
+                        <div className="ls-wicket-modal-body">
+                            <div className="flex-col gap-4">
+                                <div>
+                                    <label className="ls-wicket-label">Wicket Type</label>
+                                    <select className="ls-wicket-select" value={wicketType} onChange={e => setWicketType(e.target.value)}>
+                                        <option value="bowled">Bowled</option>
+                                        <option value="caught">Caught</option>
+                                        <option value="run_out">Run Out</option>
+                                    </select>
+                                </div>
+
+                                <div className="ls-wicket-dismissed-block">
+                                    <label className="ls-wicket-label">Who was dismissed?</label>
+                                    <div className="flex-col gap-3">
+                                        <label className={`ls-wicket-radio-row ${dismissedPlayer === state.currentBatter ? 'is-selected' : ''}`}>
+                                            <input
+                                                className="ls-wicket-radio"
+                                                type="radio"
+                                                value={state.currentBatter || ''}
+                                                checked={dismissedPlayer === state.currentBatter}
+                                                onChange={e => setDismissedPlayer(e.target.value)}
+                                            />
+                                            <span className="ls-wicket-radio-text">Striker ({state.currentBatter})</span>
+                                        </label>
+
+                                        {state.nonStriker && (
+                                            <label className={`ls-wicket-radio-row ${dismissedPlayer === state.nonStriker ? 'is-selected' : ''}`}>
+                                                <input
+                                                    className="ls-wicket-radio"
+                                                    type="radio"
+                                                    value={state.nonStriker}
+                                                    checked={dismissedPlayer === state.nonStriker}
+                                                    onChange={e => setDismissedPlayer(e.target.value)}
+                                                />
+                                                <span className="ls-wicket-radio-text">Non-Striker ({state.nonStriker})</span>
+                                            </label>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {(wicketType === 'caught' || wicketType === 'run_out') && (
+                                    <div>
+                                        <label className="ls-wicket-label">Fielder (Optional)</label>
+                                        <select className="ls-wicket-select" value={fielder} onChange={e => setFielder(e.target.value)}>
+                                            <option value="">-- Select Fielder --</option>
+                                            {bowlingSquad.map(player => (
+                                                <option key={player} value={player}>{player}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="flex gap-4 ls-wicket-actions">
+                                <button
+                                    onClick={() => {
+                                        handleAction(0, 'W', 0, true, wicketType, dismissedPlayer, fielder || null);
+                                        setShowWicketModal(false);
+                                    }}
+                                    className="btn btn-danger ls-wicket-action-btn"
+                                >
+                                    Confirm Wicket
+                                </button>
+                                <button onClick={() => setShowWicketModal(false)} className="btn btn-secondary ls-wicket-action-btn">Cancel</button>
+                            </div>
                         </div>
                     </div>
                 </div>
