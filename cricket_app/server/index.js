@@ -244,12 +244,15 @@ app.delete('/api/players/:id', adminRequired, (req, res) => {
 
 // Create a new match
 app.post('/api/matches', scorerRequired, (req, res) => {
-  const { team1_name, team2_name, toss_winner, toss_decision, total_overs, team1_squad, team2_squad, no_extra_runs, joker_player, single_batter } = req.body;
+  const { team1_name, team2_name, toss_winner, toss_decision, total_overs, team1_squad, team2_squad, no_extra_runs, joker_player, single_batter, innings_timer_seconds } = req.body;
+  const timerInitialSeconds = Number.isFinite(Number(innings_timer_seconds)) && Number(innings_timer_seconds) > 0
+    ? Number(innings_timer_seconds)
+    : Number(total_overs) * 60;
 
   try {
     const stmt = db.prepare(`
-      INSERT INTO matches (team1_name, team2_name, toss_winner, toss_decision, total_overs, current_innings, status, team1_squad, team2_squad, no_extra_runs, joker_player, single_batter)
-      VALUES (?, ?, ?, ?, ?, 1, 'IN_PROGRESS', ?, ?, ?, ?, ?)
+      INSERT INTO matches (team1_name, team2_name, toss_winner, toss_decision, total_overs, current_innings, status, team1_squad, team2_squad, no_extra_runs, joker_player, single_batter, timer_initial_seconds, innings1_timer_remaining, innings2_timer_remaining, timer_is_paused)
+      VALUES (?, ?, ?, ?, ?, 1, 'IN_PROGRESS', ?, ?, ?, ?, ?, ?, ?, ?, 0)
     `);
 
     const info = stmt.run(
@@ -262,7 +265,10 @@ app.post('/api/matches', scorerRequired, (req, res) => {
       JSON.stringify(team2_squad || []),
       no_extra_runs ? 1 : 0,
       joker_player || null,
-      single_batter ? 1 : 0
+      single_batter ? 1 : 0,
+      timerInitialSeconds,
+      timerInitialSeconds,
+      timerInitialSeconds
     );
 
     // Create first innings
@@ -276,6 +282,38 @@ app.post('/api/matches', scorerRequired, (req, res) => {
     res.json({ match_id: info.lastInsertRowid, current_innings_id: inningsInfo.lastInsertRowid });
   } catch (err) {
     console.error("Error creating match:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/matches/:id/timer', scorerRequired, (req, res) => {
+  const matchId = Number(req.params.id);
+  const inningsNumber = Number(req.body.innings_number);
+  const remainingSeconds = Number(req.body.remaining_seconds);
+  const isPaused = req.body.is_paused ? 1 : 0;
+
+  if (!Number.isFinite(matchId) || !Number.isFinite(inningsNumber) || ![1, 2].includes(inningsNumber)) {
+    return res.status(400).json({ error: 'Invalid match or innings number' });
+  }
+
+  if (!Number.isFinite(remainingSeconds) || remainingSeconds < 0) {
+    return res.status(400).json({ error: 'Invalid remaining seconds' });
+  }
+
+  const clamped = Math.max(0, Math.floor(remainingSeconds));
+  const inningsColumn = inningsNumber === 1 ? 'innings1_timer_remaining' : 'innings2_timer_remaining';
+
+  try {
+    const result = db.prepare(`UPDATE matches SET ${inningsColumn} = ?, timer_is_paused = ? WHERE id = ?`)
+      .run(clamped, isPaused, matchId);
+
+    if (result.changes === 0) {
+      return res.status(404).json({ error: 'Match not found' });
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Error updating timer:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -558,10 +596,17 @@ app.delete('/api/matches/:id', adminRequired, (req, res) => {
 
 // Update innings target / end innings
 app.post('/api/innings/end', scorerRequired, (req, res) => {
-  const { match_id, current_innings_id, next_batting_team, target_score } = req.body;
+  const { match_id, current_innings_id, next_batting_team, target_score, innings1_timer_seconds } = req.body;
+  const innings1Timer = Number(innings1_timer_seconds);
 
   // Update match current_innings
   db.prepare('UPDATE matches SET current_innings = 2 WHERE id = ?').run(match_id);
+
+  // Persist final innings 1 timer in the same request to avoid race/loss.
+  if (Number.isFinite(innings1Timer) && innings1Timer >= 0) {
+    db.prepare('UPDATE matches SET innings1_timer_remaining = ?, timer_is_paused = 1 WHERE id = ?')
+      .run(Math.floor(innings1Timer), match_id);
+  }
 
   // Update current innings target (just to store what they made + 1 for second innings context)
   db.prepare('UPDATE innings SET target_score = ? WHERE id = ?').run(target_score, current_innings_id);
@@ -578,7 +623,13 @@ app.post('/api/innings/end', scorerRequired, (req, res) => {
 
 // Finish Match
 app.post('/api/matches/:id/finish', scorerRequired, (req, res) => {
-  db.prepare("UPDATE matches SET status = 'FINISHED' WHERE id = ?").run(req.params.id);
+  const innings2Timer = Number(req.body?.innings2_timer_seconds);
+  if (Number.isFinite(innings2Timer) && innings2Timer >= 0) {
+    db.prepare("UPDATE matches SET status = 'FINISHED', innings2_timer_remaining = ?, timer_is_paused = 1 WHERE id = ?")
+      .run(Math.floor(innings2Timer), req.params.id);
+  } else {
+    db.prepare("UPDATE matches SET status = 'FINISHED' WHERE id = ?").run(req.params.id);
+  }
   res.json({ success: true });
 });
 

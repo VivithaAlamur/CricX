@@ -16,6 +16,9 @@ interface MatchData {
     joker_player?: string | null;
     team1_squad?: string;
     team2_squad?: string;
+    timer_initial_seconds?: number;
+    innings1_timer_remaining?: number;
+    innings2_timer_remaining?: number;
 }
 
 export default function MatchHistory() {

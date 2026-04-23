@@ -73,6 +73,10 @@ try { db.exec("ALTER TABLE matches ADD COLUMN no_extra_runs INTEGER DEFAULT 0;")
 try { db.exec("ALTER TABLE matches ADD COLUMN joker_player TEXT;"); } catch (e) { }
 try { db.exec("ALTER TABLE players ADD COLUMN is_active INTEGER DEFAULT 1;"); } catch (e) { }
 try { db.exec("ALTER TABLE matches ADD COLUMN single_batter INTEGER DEFAULT 0;"); } catch (e) { }
+try { db.exec("ALTER TABLE matches ADD COLUMN timer_initial_seconds INTEGER DEFAULT 0;"); } catch (e) { }
+try { db.exec("ALTER TABLE matches ADD COLUMN innings1_timer_remaining INTEGER DEFAULT 0;"); } catch (e) { }
+try { db.exec("ALTER TABLE matches ADD COLUMN innings2_timer_remaining INTEGER DEFAULT 0;"); } catch (e) { }
+try { db.exec("ALTER TABLE matches ADD COLUMN timer_is_paused INTEGER DEFAULT 0;"); } catch (e) { }
 try { db.exec("ALTER TABLE balls ADD COLUMN fielder TEXT;"); } catch (e) { }
 
 export default db;

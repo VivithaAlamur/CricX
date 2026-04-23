@@ -1,23 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { Pause, Play } from 'lucide-react';
 import { useMatch, SCORER_SESSION_ID } from '../store/MatchContext';
 import DetailedScorecard from '../components/DetailedScorecard';
 import PlayerCardSelector from '../components/PlayerCardSelector';
 
-function WicketActionIcon() {
-    return (
-        <svg viewBox="0 0 24 24" aria-hidden="true" className="ls-wicket-icon">
-            <g fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="7" y1="9" x2="7" y2="18" />
-                <line x1="12" y1="9" x2="12" y2="18" />
-                <line x1="17" y1="9" x2="17" y2="18" />
-                <line x1="5.7" y1="9" x2="8.3" y2="9" />
-                <line x1="10.7" y1="9" x2="13.3" y2="9" />
-                <line x1="15.7" y1="9" x2="18.3" y2="9" />
-                <circle cx="16.8" cy="5.3" r="2.1" />
-                <path d="M15.8 4.5c.9.2 1.7.9 2 1.8" />
-            </g>
-        </svg>
-    );
+function formatInningsTime(totalSeconds: number) {
+    const safe = Math.max(0, Math.floor(totalSeconds));
+    const hh = String(Math.floor(safe / 3600)).padStart(2, '0');
+    const mm = String(Math.floor((safe % 3600) / 60)).padStart(2, '0');
+    const ss = String(safe % 60).padStart(2, '0');
+    return `${hh}:${mm}:${ss}`;
 }
 
 export default function LiveScoring() {
@@ -30,6 +22,8 @@ export default function LiveScoring() {
     const [showInningsBreak, setShowInningsBreak] = useState(false);
     const [showScorecard, setShowScorecard] = useState(false);
     const [appError, setAppError] = useState<string | null>(null);
+    const [showAutoEndConfirmModal, setShowAutoEndConfirmModal] = useState(false);
+    const [pendingAutoEndRuns, setPendingAutoEndRuns] = useState<number | null>(null);
 
     // Lock Heartbeat Ping
     useEffect(() => {
@@ -58,6 +52,8 @@ export default function LiveScoring() {
     }, [state.matchId, state.scorerPassword, appError]);
 
     const crr = state.score.oversBowled > 0 ? (state.score.runs / state.score.oversBowled).toFixed(2) : '0.00';
+    const inningsNumber: 1 | 2 = state.target ? 2 : 1;
+    const inningsTimerRemaining = inningsNumber === 1 ? state.timer.innings1Remaining : state.timer.innings2Remaining;
     const isSecondInnings = state.status === 'INNINGS_BREAK' || state.currentInningsId !== null && state.target !== null;
     const reqRate = isSecondInnings && state.target && state.config.overs - state.score.oversBowled > 0
         ? ((state.target - state.score.runs) / (state.config.overs - state.score.oversBowled)).toFixed(2)
@@ -66,6 +62,10 @@ export default function LiveScoring() {
     // Remaining balls for chase scenarios
     const remainingBalls = (state.config.overs * 6) - (Math.floor(state.score.oversBowled) * 6 + Math.round((state.score.oversBowled % 1) * 10));
     const runsRequired = state.target ? state.target - state.score.runs : 0;
+    const oversCompletedDisplay = Number.isInteger(state.score.oversBowled)
+        ? String(state.score.oversBowled)
+        : state.score.oversBowled.toFixed(1).replace(/\.0$/, '');
+    const oversProgressDisplay = `${oversCompletedDisplay}/${state.config.overs}`;
 
 
 
@@ -113,6 +113,8 @@ export default function LiveScoring() {
 
     const battingSquad = battingTeam === state.teams.team1 ? state.teams.team1_squad : state.teams.team2_squad;
     const bowlingSquad = bowlingTeam === state.teams.team1 ? state.teams.team1_squad : state.teams.team2_squad;
+    const battingPlayerCount = Math.max(1, battingSquad.length || state.config.totalPlayers || 11);
+    const allOutWicketLimit = Math.max(1, battingPlayerCount - 1);
 
     const nextBattingSquad = nextBattingTeam === state.teams.team1 ? state.teams.team1_squad : state.teams.team2_squad;
     const nextBowlingSquad = nextBowlingTeam === state.teams.team1 ? state.teams.team1_squad : state.teams.team2_squad;
@@ -131,6 +133,42 @@ export default function LiveScoring() {
     const [tempTeam2Squad, setTempTeam2Squad] = useState<string[]>([]);
     const [tempJokerPlayer, setTempJokerPlayer] = useState<string | null>(null);
     const [availablePlayersForSquad, setAvailablePlayersForSquad] = useState<{ id: number, name: string }[]>([]);
+
+    useEffect(() => {
+        if (state.status !== 'IN_PROGRESS') return;
+        if (state.timer.isPaused) return;
+
+        const timerId = window.setTimeout(() => {
+            dispatch({
+                type: 'UPDATE_INNINGS_TIMER',
+                payload: {
+                    inningsNumber,
+                    remainingSeconds: inningsTimerRemaining + 1
+                }
+            });
+        }, 1000);
+
+        return () => window.clearTimeout(timerId);
+    }, [state.status, state.timer.isPaused, inningsTimerRemaining, inningsNumber, dispatch]);
+
+    useEffect(() => {
+        if (state.status !== 'IN_PROGRESS' || !state.matchId) return;
+
+        fetch(`/api/matches/${state.matchId}/timer`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-scorer-password': state.scorerPassword
+            },
+            body: JSON.stringify({
+                innings_number: inningsNumber,
+                remaining_seconds: inningsTimerRemaining,
+                is_paused: state.timer.isPaused
+            })
+        }).catch((err) => {
+            console.error('Failed to sync innings timer:', err);
+        });
+    }, [state.status, state.matchId, state.scorerPassword, inningsNumber, inningsTimerRemaining, state.timer.isPaused]);
 
     const triggerCelebration = (type: 4 | 6 | 'W') => {
         setCelebrationType(type);
@@ -222,9 +260,12 @@ export default function LiveScoring() {
             // because state.score.runs is stale in this closure.
             const newTotalRuns = state.score.runs + finalRuns + finalExtras;
 
-            // Check Innings End
-            if (isWicket && state.score.wickets + 1 >= 10) {
-                handleInningsBreak(newTotalRuns);
+            // Check Innings End: auto end when only one batter remains (all others out)
+            const projectedWickets = state.score.wickets + (isWicket ? 1 : 0);
+            if (isWicket && projectedWickets >= allOutWicketLimit) {
+                setNeedsNextBatter(false);
+                setPendingAutoEndRuns(newTotalRuns);
+                setShowAutoEndConfirmModal(true);
                 return;
             }
 
@@ -239,7 +280,7 @@ export default function LiveScoring() {
                 }
             }
 
-            if (isWicket && state.score.wickets + 1 < 10) {
+            if (isWicket && projectedWickets < allOutWicketLimit) {
                 setNeedsNextBatter(true);
             }
 
@@ -259,6 +300,16 @@ export default function LiveScoring() {
                 ? (state.toss.winner === state.teams.team1 ? state.teams.team2 : state.teams.team1)
                 : state.toss.winner;
 
+            // Flush final innings 1 timer to server before status changes
+            const finalInnings1Time = state.timer.innings1Remaining;
+            if (state.matchId && Number.isFinite(finalInnings1Time)) {
+                await fetch(`/api/matches/${state.matchId}/timer`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', 'x-scorer-password': state.scorerPassword },
+                    body: JSON.stringify({ innings_number: 1, remaining_seconds: finalInnings1Time, is_paused: true })
+                }).catch(() => {});
+            }
+
             try {
                 const res = await fetch('/api/innings/end', {
                     method: 'POST',
@@ -270,7 +321,8 @@ export default function LiveScoring() {
                         match_id: state.matchId,
                         current_innings_id: state.currentInningsId,
                         next_batting_team: nextTeam,
-                        target_score: target
+                        target_score: target,
+                        innings1_timer_seconds: finalInnings1Time
                     })
                 });
                 const data = await res.json(); // expects { new_innings_id: number }
@@ -302,14 +354,29 @@ export default function LiveScoring() {
                 const res = await fetch(`/api/matches/${state.matchId}/finish`, {
                     method: 'POST',
                     headers: {
+                        'Content-Type': 'application/json',
                         'x-scorer-password': state.scorerPassword
-                    }
+                    },
+                    body: JSON.stringify({
+                        innings2_timer_seconds: state.timer.innings2Remaining
+                    })
                 });
                 if (!res.ok) {
                     const data = await res.json();
                     alert(`Failed to finish match: ${data.error || 'Unknown error'}`);
                     return;
                 }
+
+                // Flush final innings 2 timer to server before status changes
+                const finalInnings2Time = state.timer.innings2Remaining;
+                if (state.matchId && Number.isFinite(finalInnings2Time)) {
+                    await fetch(`/api/matches/${state.matchId}/timer`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json', 'x-scorer-password': state.scorerPassword },
+                        body: JSON.stringify({ innings_number: 2, remaining_seconds: finalInnings2Time, is_paused: true })
+                    }).catch(() => {});
+                }
+
                 dispatch({ type: 'FINISH_MATCH', payload: { winner } });
             } catch (err: any) {
                 console.error(err);
@@ -355,6 +422,13 @@ export default function LiveScoring() {
             setNeedsNextBowler(false);
             setNextBowlerInput('');
         }
+    };
+
+    const confirmAutoEndInnings = async () => {
+        const finalRuns = pendingAutoEndRuns ?? state.score.runs;
+        setShowAutoEndConfirmModal(false);
+        setPendingAutoEndRuns(null);
+        await handleInningsBreak(finalRuns);
     };
 
     const openEditModal = async () => {
@@ -489,7 +563,7 @@ export default function LiveScoring() {
 
     useEffect(() => {
         if (state.status === 'IN_PROGRESS') {
-            if ((!state.currentBatter || (!state.nonStriker && battingSquad.length > 1)) && battingSquad.length > 0 && state.score.wickets < 10) {
+            if ((!state.currentBatter || (!state.nonStriker && battingSquad.length > 1)) && battingSquad.length > 0 && state.score.wickets < allOutWicketLimit) {
                 setNeedsNextBatter(true);
             }
             // If the over just ended and we resumed, thisOver will be empty, legalBalls > 0.
@@ -498,7 +572,7 @@ export default function LiveScoring() {
                 setNeedsNextBowler(true);
             }
         }
-    }, [state.status, state.currentBatter, state.currentBowler, battingSquad.length, bowlingSquad.length]);
+    }, [state.status, state.currentBatter, state.currentBowler, battingSquad.length, bowlingSquad.length, state.score.wickets, allOutWicketLimit, state.nonStriker]);
 
     if (showInningsBreak || state.status === 'INNINGS_BREAK') {
         return (
@@ -508,6 +582,11 @@ export default function LiveScoring() {
                 <div className="ls-ib-target-card">
                     <p className="ls-ib-target-label">Target</p>
                     <p className="ls-ib-target-text"><span className="ls-ib-target-value">{state.target}</span> in {state.config.overs} overs</p>
+                </div>
+
+                <div className="glass-card ls-ib-innings1-time-card">
+                    <p className="ls-ib-innings1-time-label">Innings 1 Total Time</p>
+                    <p className="ls-ib-innings1-time-value">{formatInningsTime(state.timer.innings1Remaining)}</p>
                 </div>
 
                 <form onSubmit={startSecondInnings} className="flex-col gap-4 text-left">
@@ -636,6 +715,31 @@ export default function LiveScoring() {
                 </div>
             )}
 
+            <div className="ls-sticky-header">
+            <div className="glass-card ls-countdown-top-wrap">
+                <div className="glass-card ls-countdown-card" role="status" aria-live="polite">
+                    <span className="ls-countdown-card-label">Innings Time</span>
+                    <span className="ls-countdown-card-value">{formatInningsTime(inningsTimerRemaining)}</span>
+                    <button
+                        type="button"
+                        className="ls-timer-inline-toggle ls-timer-inline-toggle-solid"
+                        aria-label={state.timer.isPaused ? 'Resume innings countdown' : 'Pause innings countdown'}
+                        title={state.timer.isPaused ? 'Play' : 'Pause'}
+                        onClick={() => {
+                            dispatch({
+                                type: 'UPDATE_INNINGS_TIMER',
+                                payload: {
+                                    inningsNumber,
+                                    isPaused: !state.timer.isPaused
+                                }
+                            });
+                        }}
+                    >
+                        {state.timer.isPaused ? <Play size={18} aria-hidden="true" /> : <Pause size={18} aria-hidden="true" />}
+                    </button>
+                </div>
+            </div>
+
             {/* Score Header */}
             <div className="glass-panel ls-score-panel">
                 <div className="flex-between ls-score-top">
@@ -650,7 +754,7 @@ export default function LiveScoring() {
                             </div>
                         </div>
                         <p className="ls-over-label">
-                            {state.score.oversBowled} <span className="ls-over-label-unit">OVERS</span>
+                            {oversProgressDisplay} <span className="ls-over-label-unit">OVERS</span>
                         </p>
                     </div>
 
@@ -679,6 +783,7 @@ export default function LiveScoring() {
                     </div>
                 </div>
             </div>
+            </div>{/* end ls-sticky-header */}
 
             <div className="glass-card ls-top-quick-actions">
                 <button
@@ -801,32 +906,26 @@ export default function LiveScoring() {
                     </div>
                 </div>
                 <div className="flex gap-2 ls-over-balls">
-                    {Array.from({ length: 6 }).map((_, i) => {
-                        const ball = state.thisOver[i];
-                        let bClass = ball ? '' : 'empty-ball';
-                        if (ball === '4') bClass = 'run-4';
-                        if (ball === '6') bClass = 'run-6';
-                        if (ball === 'W') bClass = 'wicket';
-                        if (['Wd', 'Nb'].includes(ball)) bClass = 'extra';
-
-                        return (
-                            <div key={i} className={`ball-bubble ${bClass}`} style={{
-                                opacity: ball ? 1 : 0.2,
-                                border: ball ? 'none' : '2px dashed var(--border-color)',
-                                background: ball ? undefined : 'transparent'
-                            }}>
-                                {ball || ''}
-                            </div>
-                        );
-                    })}
-                    {state.thisOver.length > 6 && state.thisOver.slice(6).map((ball, idx) => {
-                        let bClass = '';
-                        if (ball === '4') bClass = 'run-4';
-                        if (ball === '6') bClass = 'run-6';
-                        if (ball === 'W') bClass = 'wicket';
-                        if (['Wd', 'Nb'].includes(ball)) bClass = 'extra';
-                        return <div key={idx + 6} className={`ball-bubble ${bClass}`}>{ball}</div>;
-                    })}
+                    {(() => {
+                        const extrasInOver = state.thisOver.filter((b: string) => b === 'Wd' || b === 'Nb').length;
+                        const totalSlots = 6 + extrasInOver;
+                        return Array.from({ length: totalSlots }).map((_, i) => {
+                            const ball = state.thisOver[i];
+                            let bClass = ball ? '' : 'empty-ball';
+                            if (ball === '4') bClass = 'run-4';
+                            if (ball === '6') bClass = 'run-6';
+                            if (ball === 'W') bClass = 'wicket';
+                            if (['Wd', 'Nb'].includes(ball)) bClass = 'extra';
+                            return (
+                                <div key={i} className={`ball-bubble ${bClass}`} style={{
+                                    opacity: ball ? 1 : 0.2,
+                                    border: ball ? 'none' : '3px dashed black',
+                                }}>
+                                    {ball || ''}
+                                </div>
+                            );
+                        });
+                    })()}
                 </div>
             </div>
 
@@ -929,7 +1028,6 @@ export default function LiveScoring() {
                             setFielder('');
                             setShowWicketModal(true);
                         }}>
-                            <WicketActionIcon />
                             <span>Wicket</span>
                         </button>
                     </div>
@@ -1348,6 +1446,42 @@ export default function LiveScoring() {
                     </div>
                 </div>
             )}
+
+            {showAutoEndConfirmModal && (
+                <div className="ls-edit-overlay">
+                    <div className="glass-panel" style={{ padding: '1.35rem', maxWidth: '420px', width: '92%', textAlign: 'center', border: '1px solid var(--border-light)' }}>
+                        <h3 style={{ marginBottom: '0.5rem', fontSize: '1.2rem', color: 'var(--accent-primary)' }}>Innings End Confirmation</h3>
+                        <p style={{ color: 'var(--text-secondary)', marginBottom: '1rem' }}>
+                            Only one batter remains and all other players are out.
+                        </p>
+                        <p style={{ color: 'var(--text-primary)', marginBottom: '1.25rem', fontWeight: 600 }}>
+                            End this innings now?
+                        </p>
+                        <div className="flex gap-3" style={{ justifyContent: 'center' }}>
+                            <button
+                                type="button"
+                                onClick={confirmAutoEndInnings}
+                                className="btn btn-primary"
+                                style={{ minWidth: '140px' }}
+                            >
+                                End Innings
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setShowAutoEndConfirmModal(false);
+                                    setPendingAutoEndRuns(null);
+                                }}
+                                className="btn btn-secondary"
+                                style={{ minWidth: '110px' }}
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {appError && (
                 <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)' }}>
                     <div className="glass-panel" style={{ padding: '2rem', maxWidth: '400px', width: '90%', textAlign: 'center' }}>

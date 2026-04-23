@@ -931,7 +931,18 @@ input::placeholder {
 }
 
 .ms-toss-winner-group {
-  margin-bottom: 0.45rem;
+  margin-bottom: 0.28rem;
+}
+
+.ms-toss-winner-group .ms-toss-team-select {
+  margin-top: 0.36rem;
+  gap: 0.62rem;
+}
+
+.ms-toss-winner-group .ms-toss-team-btn {
+  min-height: 44px;
+  padding: 0.62rem 0.9rem;
+  font-size: 0.94rem;
 }
 
 .ms-toss-optional {
@@ -946,7 +957,7 @@ input::placeholder {
 
 /* Winner card */
 .ms-toss-winner-card {
-  padding: 1.5rem;
+  padding: 0.9rem 1rem;
   border-left: 4px solid var(--accent-success);
   text-align: center;
   max-width: 360px;
@@ -961,8 +972,8 @@ input::placeholder {
 
 .ms-toss-winner-title {
   color: var(--text-primary);
-  margin-bottom: 0.4rem;
-  font-size: 1.38rem;
+  margin: 0 0 0.22rem;
+  font-size: 1.28rem;
 }
 
 .ms-toss-winner-inline {
@@ -975,7 +986,9 @@ input::placeholder {
 
 .ms-toss-winner-text {
   color: var(--text-secondary);
-  font-size: 1.08rem;
+  font-size: 1.02rem;
+  margin: 0;
+  line-height: 1.25;
 }
 
 .ms-start-form {
@@ -1474,8 +1487,7 @@ input::placeholder {
 }
 
 .ball-bubble.empty-ball {
-  background: transparent;
-  border: 2px dashed rgba(37, 99, 235, 0.25);
+  border: 2px dashed black;
   color: transparent;
 }
 
@@ -1508,6 +1520,19 @@ input::placeholder {
   max-width: 860px;
   margin: 0 auto;
   padding-bottom: 0.65rem;
+  height: calc(100vh - 7rem);
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.ls-sticky-header {
+  position: sticky;
+  top: 0;
+  z-index: 120;
+  background: linear-gradient(180deg, #f8fbff 80%, transparent 100%);
+  padding-bottom: 0.35rem;
 }
 
 .ls-celebration-pop {
@@ -1590,11 +1615,40 @@ input::placeholder {
 
 .ls-ib-target-card {
   text-align: center;
-  margin-bottom: 1.15rem;
+  margin-bottom: 0.75rem;
   padding: 0.95rem 1rem;
   border: 1px solid var(--border-light);
   border-radius: var(--radius-md);
   background: linear-gradient(145deg, rgba(16, 185, 129, 0.1), rgba(37, 99, 235, 0.06));
+}
+
+.ls-ib-innings1-time-card {
+  text-align: center;
+  margin-bottom: 1.15rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid rgba(14, 165, 233, 0.3);
+  border-radius: var(--radius-md);
+  background: linear-gradient(145deg, rgba(14, 165, 233, 0.08), rgba(37, 99, 235, 0.04));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.ls-ib-innings1-time-label {
+  color: var(--text-muted);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+}
+
+.ls-ib-innings1-time-value {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--accent-primary);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.03em;
 }
 
 .ls-ib-target-label {
@@ -1666,6 +1720,7 @@ input::placeholder {
 }
 
 .ls-score-panel {
+  position: relative;
   padding: 1.35rem;
   border: 1px solid var(--border-light);
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(236, 245, 255, 0.82));
@@ -1676,6 +1731,131 @@ input::placeholder {
   gap: 1rem;
 }
 
+.ls-timer-inline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.45rem;
+  margin-bottom: 0.42rem;
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  letter-spacing: 0.15px;
+  line-height: 1.2;
+}
+
+.ls-timer-inline-corner {
+  position: absolute;
+  top: 0.9rem;
+  right: 1.05rem;
+  margin: 0;
+}
+
+.ls-timer-inline-label {
+  color: var(--text-muted);
+  text-transform: uppercase;
+  font-size: 0.73rem;
+  letter-spacing: 0.65px;
+  font-weight: 700;
+}
+
+.ls-timer-inline-value {
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.ls-timer-inline-toggle {
+  appearance: none;
+  border: 0;
+  background: rgba(255, 255, 255, 0.28);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.65rem;
+  height: 1.65rem;
+  border-radius: 999px;
+  color: var(--accent-primary);
+  padding: 0;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.24);
+  transition: background-color 160ms ease, color 160ms ease, box-shadow 160ms ease;
+}
+
+.ls-timer-inline-toggle:hover {
+  background: color-mix(in srgb, var(--accent-primary) 22%, white 78%);
+  color: color-mix(in srgb, var(--accent-primary) 72%, black 28%);
+  box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.34);
+}
+
+.ls-timer-inline-toggle:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent-primary) 48%, white 52%);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+.ls-timer-inline-toggle-solid {
+  width: 1.85rem;
+  height: 1.85rem;
+  background: linear-gradient(180deg, rgba(37, 99, 235, 0.2), rgba(37, 99, 235, 0.12));
+  color: color-mix(in srgb, var(--accent-primary) 78%, black 22%);
+  box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.28), 0 2px 8px rgba(2, 6, 23, 0.08);
+}
+
+.ls-timer-inline-toggle-solid:hover {
+  background: linear-gradient(180deg, rgba(37, 99, 235, 0.28), rgba(37, 99, 235, 0.18));
+  box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.36), 0 3px 10px rgba(2, 6, 23, 0.11);
+}
+
+.ls-timer-card {
+  padding: 0.65rem 0.85rem 0.8rem;
+  min-width: 190px;
+  text-align: right;
+  border-left: 3px solid var(--accent-primary);
+}
+.ls-timer-label {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  font-weight: 700;
+}
+.ls-timer-value {
+  margin: 0.15rem 0 0.45rem;
+  color: var(--text-primary);
+  font-size: 1.18rem;
+  font-weight: 900;
+  letter-spacing: 0.6px;
+}
+.ls-timer-toggle {
+  min-height: 30px;
+  font-size: 0.76rem;
+  padding: 0.3rem 0.65rem;
+}
+
+.msu-timer-card {
+  margin-top: 0.9rem;
+  padding: 0.78rem 1rem;
+  border-left: 3px solid var(--accent-primary);
+}
+
+.msu-timer-title {
+  margin: 0 0 0.35rem;
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text-secondary);
+  font-weight: 700;
+}
+
+.msu-timer-row {
+  margin: 0.2rem 0;
+  color: var(--text-primary);
+  font-size: 0.92rem;
+}
 .ls-score-main-wrap {
   align-items: flex-start;
   gap: 1rem;
@@ -1734,8 +1914,10 @@ input::placeholder {
 }
 
 .ls-end-innings-btn {
-  padding: 0.5rem 0.9rem;
-  font-size: 0.78rem;
+  margin-top: 0.2rem;
+  min-height: 42px;
+  padding: 0.62rem 1.05rem;
+  font-size: 0.84rem;
   text-transform: uppercase;
   letter-spacing: 0.4px;
 }
@@ -1881,6 +2063,40 @@ input::placeholder {
   gap: 1rem;
   align-items: center;
   flex-wrap: wrap;
+}
+
+.ls-countdown-top-wrap {
+  margin-bottom: 0.7rem;
+  padding: 0.5rem 0.8rem;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.ls-countdown-card {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.52rem;
+  padding: 0.42rem 0.62rem;
+  border: 1px solid rgba(37, 99, 235, 0.2);
+  background: linear-gradient(180deg, rgba(37, 99, 235, 0.08), rgba(255, 255, 255, 0.75));
+  border-radius: 10px;
+}
+
+.ls-countdown-card-label {
+  font-size: 0.72rem;
+  letter-spacing: 0.55px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+.ls-countdown-card-value {
+  font-size: 0.98rem;
+  font-weight: 900;
+  letter-spacing: 0.45px;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
 }
 
 .ls-over-head {
@@ -2668,8 +2884,8 @@ input::placeholder {
 }
 
 .ls-action-btn {
-  min-height: 76px;
-  font-size: 1.45rem;
+  min-height: 84px;
+  font-size: 1.62rem;
   border-radius: 14px;
 }
 
@@ -2677,7 +2893,7 @@ input::placeholder {
   background: rgba(245, 158, 11, 0.14);
   color: #b45309;
   border: 1px solid rgba(245, 158, 11, 0.3);
-  font-size: 1.05rem;
+  font-size: 1.12rem;
   font-weight: 700;
 }
 
@@ -2688,11 +2904,11 @@ input::placeholder {
 }
 
 .ls-action-boundary {
-  font-size: 1.8rem;
+  font-size: 2rem;
 }
 
 .ls-action-wicket {
-  font-size: 1.02rem;
+  font-size: 1.12rem;
   letter-spacing: 0.4px;
 }
 
@@ -2936,8 +3152,14 @@ input::placeholder {
     align-items: stretch;
   }
 
+  .ls-countdown-card {
+    width: 100%;
+    justify-content: center;
+  }
+
   .ls-end-innings-btn {
     width: 100%;
+    min-height: 44px;
   }
 
   .ls-target-card {
@@ -2966,6 +3188,12 @@ input::placeholder {
   .ls-top-quick-actions {
     gap: 0.85rem;
     padding: 0.6rem 0.8rem;
+  }
+
+  .ls-countdown-top-wrap {
+    justify-content: center;
+    margin-bottom: 0.55rem;
+    padding: 0.55rem 0.7rem;
   }
 
   .ls-over-head {
@@ -3367,6 +3595,52 @@ input::placeholder {
   flex: 1;
 }
 
+
+/* Final Match History icon alignment overrides */
+.mh-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.mh-bottom-row {
+  width: auto;
+  margin-top: 0;
+  align-self: center;
+}
+
+.mh-bottom-row .mh-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: nowrap;
+  gap: 0.5rem;
+}
+
+.mh-icon-btn {
+  width: 2rem;
+  min-width: 2rem;
+  height: 2rem;
+  min-height: 2rem;
+  padding: 0;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.mh-icon-btn svg {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+}
+
+@media (max-width: 768px) {
+  .mh-bottom-row .mh-actions {
+    gap: 0.45rem;
+  }
+}
 .pr-player-head {
   margin-top: 1.6rem;
   padding-top: 0.1rem;
@@ -3842,12 +4116,12 @@ input::placeholder {
   }
 
   .mh-icon-btn {
-    display: inline-flex;
-    align-items: center;
+    min-height: 76px;
+    font-size: 1.48rem;
     justify-content: center;
     width: 2rem;
     min-width: 2rem;
-    height: 2rem;
+    font-size: 1.05rem;
     padding: 0;
   }
 
@@ -3856,6 +4130,7 @@ input::placeholder {
     inset: 0;
     background: var(--bg-secondary);
     display: flex;
+    font-size: 1rem;
     align-items: center;
     justify-content: center;
     gap: 0.65rem;
@@ -3873,6 +4148,58 @@ input::placeholder {
     padding: 0.36rem 0.62rem;
     font-size: 0.78rem;
   }
+
+/* Match History icon alignment fix */
+.mh-card {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.mh-bottom-row {
+  width: auto;
+  margin-top: 0;
+  align-self: center;
+}
+
+.mh-bottom-row .mh-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: nowrap;
+  gap: 0.5rem;
+}
+
+.mh-icon-btn {
+  width: 2rem;
+  min-width: 2rem;
+  height: 2rem;
+  min-height: 2rem;
+  padding: 0;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.mh-icon-btn svg {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+}
+
+@media (max-width: 768px) {
+  .mh-card {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+  }
+
+  .mh-bottom-row .mh-actions {
+    gap: 0.45rem;
+  }
+}
+
+}
 
 
 /* Match History action row alignment (all breakpoints) */
@@ -3957,7 +4284,6 @@ input::placeholder {
       margin-bottom: 0.2rem;
     }
   }
-}
 
   /* Match History (base/desktop) */
   .mh-shell {
@@ -4106,3 +4432,48 @@ input::placeholder {
     padding: 0.36rem 0.62rem;
     font-size: 0.78rem;
   }
+/* Match History icon alignment - final append */
+.mh-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.mh-bottom-row {
+  width: auto;
+  margin-top: 0;
+  align-self: center;
+}
+
+.mh-bottom-row .mh-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: nowrap;
+  gap: 0.5rem;
+}
+
+.mh-icon-btn {
+  width: 2rem;
+  min-width: 2rem;
+  height: 2rem;
+  min-height: 2rem;
+  padding: 0;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.mh-icon-btn svg {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+}
+
+@media (max-width: 768px) {
+  .mh-bottom-row .mh-actions {
+    gap: 0.45rem;
+  }
+}

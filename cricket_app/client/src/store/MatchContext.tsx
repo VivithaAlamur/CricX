@@ -23,8 +23,15 @@ export interface MatchState {
     };
     config: {
         overs: number;
+        totalPlayers: number | null;
+        inningsTimerSeconds: number;
         noExtraRuns: boolean;
         jokerPlayer: string | null;
+    };
+    timer: {
+        isPaused: boolean;
+        innings1Remaining: number;
+        innings2Remaining: number;
     };
     score: {
         runs: number;
@@ -44,7 +51,7 @@ export interface MatchState {
 }
 
 type Action =
-    | { type: 'SET_TEAMS'; payload: { team1: string; team2: string; team1_squad: string[]; team2_squad: string[]; overs: number; noExtraRuns: boolean, jokerPlayer: string | null } }
+    | { type: 'SET_TEAMS'; payload: { team1: string; team2: string; team1_squad: string[]; team2_squad: string[]; overs: number; totalPlayers: number; noExtraRuns: boolean, jokerPlayer: string | null } }
     | { type: 'RESET_MATCH' }
     | { type: 'RESET_FOR_REMATCH' }
     | { type: 'BACK_TO_SETUP' }
@@ -61,6 +68,7 @@ type Action =
     | { type: 'RESUME_MATCH'; payload: { match: any, innings: any[], balls: any[] } }
     | { type: 'CHANGE_BATTER'; payload: { isStriker: boolean; newPlayer: string } }
     | { type: 'CHANGE_BOWLER'; payload: { newPlayer: string } }
+    | { type: 'UPDATE_INNINGS_TIMER'; payload: { inningsNumber: 1 | 2; remainingSeconds?: number; isPaused?: boolean } }
     | { type: 'UPDATE_SQUADS'; payload: { team1_squad: string[]; team2_squad: string[]; jokerPlayer: string | null } }
     | { type: 'SET_ADMIN_PASSWORD'; payload: string }
     | { type: 'SET_SCORER_PASSWORD'; payload: string };
@@ -71,7 +79,8 @@ const initialState: MatchState = {
     currentInningsId: null,
     teams: { team1: '', team2: '', team1_squad: [], team2_squad: [] },
     toss: { winner: null, decision: null },
-    config: { overs: 20, noExtraRuns: false, jokerPlayer: null },
+    config: { overs: 20, totalPlayers: null, inningsTimerSeconds: 1200, noExtraRuns: false, jokerPlayer: null },
+    timer: { isPaused: false, innings1Remaining: 0, innings2Remaining: 0 },
     score: { runs: 0, wickets: 0, oversBowled: 0, legalBalls: 0 },
     target: null,
     currentBatter: '',
@@ -87,6 +96,7 @@ const initialState: MatchState = {
 function matchReducer(state: MatchState, action: Action): MatchState {
     switch (action.type) {
         case 'SET_TEAMS':
+            const inningsTimerSeconds = action.payload.overs * 60;
             return {
                 ...initialState,
                 teams: {
@@ -98,8 +108,15 @@ function matchReducer(state: MatchState, action: Action): MatchState {
                 config: {
                     ...state.config,
                     overs: action.payload.overs,
+                    totalPlayers: action.payload.totalPlayers,
+                    inningsTimerSeconds,
                     noExtraRuns: action.payload.noExtraRuns,
                     jokerPlayer: action.payload.jokerPlayer
+                },
+                timer: {
+                    isPaused: false,
+                    innings1Remaining: 0,
+                    innings2Remaining: 0
                 },
                 adminPassword: state.adminPassword,
                 scorerPassword: state.scorerPassword,
@@ -229,6 +246,10 @@ function matchReducer(state: MatchState, action: Action): MatchState {
             return {
                 ...state,
                 status: 'INNINGS_BREAK',
+                timer: {
+                    ...state.timer,
+                    isPaused: true
+                },
                 target: action.payload.target
             };
         case 'START_SECOND_INNINGS':
@@ -241,6 +262,11 @@ function matchReducer(state: MatchState, action: Action): MatchState {
                 currentBatter: action.payload.batter1,
                 nonStriker: action.payload.batter2,
                 currentBowler: action.payload.bowler,
+                timer: {
+                    ...state.timer,
+                    isPaused: false,
+                    innings2Remaining: 0
+                },
                 innings: [
                     ...state.innings,
                     { id: action.payload.inningsId, innings_number: 2, team_name: state.innings[0].team_name === state.teams.team1 ? state.teams.team2 : state.teams.team1 }
@@ -249,6 +275,10 @@ function matchReducer(state: MatchState, action: Action): MatchState {
         case 'FINISH_MATCH':
             return {
                 ...state,
+                timer: {
+                    ...state.timer,
+                    isPaused: true
+                },
                 status: 'FINISHED'
             };
         case 'SYNC_MATCH_STATE': {
@@ -289,6 +319,9 @@ function matchReducer(state: MatchState, action: Action): MatchState {
             let nonStriker = lastBall?.non_striker || '';
             let currentBowler = lastBall?.bowler || '';
 
+            const isSyncingCurrentLiveMatch = Number(state.matchId) === Number(match.id) && state.status === 'IN_PROGRESS';
+            const isSameInnings = Number(state.currentInningsId) === Number(currentInnings?.id);
+
             // Apply strike rotation if last ball was 1 or 3 runs
             if (lastBall && (lastBall.runs === 1 || lastBall.runs === 3) && !lastBall.is_wicket) {
                 [currentBatter, nonStriker] = [nonStriker, currentBatter];
@@ -299,6 +332,28 @@ function matchReducer(state: MatchState, action: Action): MatchState {
                 [currentBatter, nonStriker] = [nonStriker, currentBatter];
                 currentBowler = '';
             }
+
+            // When editing/deleting recent balls in the active live innings, keep current selections
+            // if DB no longer has enough context to reconstruct them from the last ball.
+            if (isSyncingCurrentLiveMatch && isSameInnings) {
+                if (!currentBatter && state.currentBatter) currentBatter = state.currentBatter;
+                if (!nonStriker && state.nonStriker) nonStriker = state.nonStriker;
+                if (!currentBowler && state.currentBowler) currentBowler = state.currentBowler;
+            }
+
+            const resumedOversRaw = Number(match.total_overs ?? match.overs);
+            const resumedOvers = Number.isFinite(resumedOversRaw) && resumedOversRaw > 0
+                ? resumedOversRaw
+                : (state.config.overs || 0);
+            const resumedTimerInitial = Number.isFinite(Number(match.timer_initial_seconds))
+                ? Number(match.timer_initial_seconds)
+                : resumedOvers * 60;
+            const dbInnings1 = Number.isFinite(Number(match.innings1_timer_remaining))
+                ? Number(match.innings1_timer_remaining)
+                : state.timer.innings1Remaining;
+            const dbInnings2 = Number.isFinite(Number(match.innings2_timer_remaining))
+                ? Number(match.innings2_timer_remaining)
+                : state.timer.innings2Remaining;
 
             return {
                 ...state,
@@ -316,9 +371,16 @@ function matchReducer(state: MatchState, action: Action): MatchState {
                     team2_squad: typeof match.team2_squad === 'string' ? JSON.parse(match.team2_squad) : match.team2_squad
                 },
                 config: {
-                    overs: match.overs,
+                    overs: resumedOvers,
+                    totalPlayers: null,
+                    inningsTimerSeconds: resumedTimerInitial,
                     noExtraRuns: match.no_extra_runs === 1,
                     jokerPlayer: match.joker_player
+                },
+                timer: {
+                    isPaused: isSyncingCurrentLiveMatch ? state.timer.isPaused : (match.timer_is_paused === 1),
+                    innings1Remaining: isSyncingCurrentLiveMatch ? Math.max(state.timer.innings1Remaining, dbInnings1) : dbInnings1,
+                    innings2Remaining: isSyncingCurrentLiveMatch ? Math.max(state.timer.innings2Remaining, dbInnings2) : dbInnings2
                 },
                 score: {
                     runs: currentInnings?.total_runs || 0,
@@ -326,7 +388,7 @@ function matchReducer(state: MatchState, action: Action): MatchState {
                     legalBalls: legal,
                     oversBowled: currentInnings?.total_overs_bowled || 0
                 },
-                target: (match.current_innings === 2 && firstInnings) ? firstInnings.total_runs + 1 : undefined,
+                target: (Number(match.current_innings) === 2 && firstInnings) ? firstInnings.total_runs + 1 : undefined,
                 balls: balls || [],
                 innings: innings || [],
                 thisOver,
@@ -359,6 +421,23 @@ function matchReducer(state: MatchState, action: Action): MatchState {
                 ...state,
                 currentBowler: action.payload.newPlayer
             };
+        case 'UPDATE_INNINGS_TIMER': {
+            const nextInnings1 = action.payload.inningsNumber === 1
+                ? (action.payload.remainingSeconds ?? state.timer.innings1Remaining)
+                : state.timer.innings1Remaining;
+            const nextInnings2 = action.payload.inningsNumber === 2
+                ? (action.payload.remainingSeconds ?? state.timer.innings2Remaining)
+                : state.timer.innings2Remaining;
+
+            return {
+                ...state,
+                timer: {
+                    isPaused: action.payload.isPaused ?? state.timer.isPaused,
+                    innings1Remaining: nextInnings1,
+                    innings2Remaining: nextInnings2
+                }
+            };
+        }
         case 'SET_ADMIN_PASSWORD':
             return {
                 ...state,

@@ -69,7 +69,6 @@ function ManagePlayersIcon() {
 
 export default function MatchSetup() {
     const { state, dispatch } = useMatch();
-    const MAX_TEAM_SELECTION = 11;
 
     const [team1, setTeam1] = useState('');
     const [team2, setTeam2] = useState('');
@@ -78,6 +77,7 @@ export default function MatchSetup() {
     const [playerFilter, setPlayerFilter] = useState('');
     const [squadView, setSquadView] = useState<'all' | 'team1' | 'team2'>('all');
     const [oversInput, setOversInput] = useState('');
+    const [totalPlayersInput, setTotalPlayersInput] = useState('');
     const [noExtraRuns, setNoExtraRuns] = useState(false);
     const [useJoker, setUseJoker] = useState(false);
     const [jokerPlayer, setJokerPlayer] = useState<string | null>(null);
@@ -89,6 +89,7 @@ export default function MatchSetup() {
         team1: false,
         team2: false,
         overs: false,
+        totalPlayers: false,
         scorerPin: false,
         team1Squad: false,
         team2Squad: false,
@@ -108,11 +109,18 @@ export default function MatchSetup() {
         if (state.status !== 'SETUP') return;
 
         // Restore setup form values when navigating back from toss.
+        const hasExistingSetupData =
+            !!state.teams.team1.trim() ||
+            !!state.teams.team2.trim() ||
+            state.teams.team1_squad.length > 0 ||
+            state.teams.team2_squad.length > 0;
+
         setTeam1(state.teams.team1 || '');
         setTeam2(state.teams.team2 || '');
         setTeam1Squad(state.teams.team1_squad || []);
         setTeam2Squad(state.teams.team2_squad || []);
-        setOversInput(state.config.overs ? String(state.config.overs) : '');
+        setOversInput(hasExistingSetupData && state.config.overs ? String(state.config.overs) : '');
+        setTotalPlayersInput(hasExistingSetupData && state.config.totalPlayers ? String(state.config.totalPlayers) : '');
         setNoExtraRuns(!!state.config.noExtraRuns);
         setUseJoker(!!state.config.jokerPlayer);
         setJokerPlayer(state.config.jokerPlayer || null);
@@ -124,9 +132,24 @@ export default function MatchSetup() {
 
     const [tossWinner, setTossWinner] = useState('');
     const [tossDecision, setTossDecision] = useState<'' | 'bat' | 'bowl'>('');
+    const [tossValidationError, setTossValidationError] = useState('');
+    const [tossStage, setTossStage] = useState<'details' | 'lineup'>('details');
     const [isTossing, setIsTossing] = useState(false);
     const [tossResult, setTossResult] = useState<'Heads' | 'Tails' | null>(null);
-    const canPickSquads = !!team1.trim() && !!team2.trim() && !!oversInput.trim() && Number(oversInput) > 0;
+    const totalPlayers = Number(totalPlayersInput);
+    const isOddTotalPlayers = !!totalPlayersInput.trim() && totalPlayers > 1 && totalPlayers % 2 !== 0;
+    const basePlayersPerTeamLimit = totalPlayers > 1 ? Math.floor(totalPlayers / 2) : 0;
+    const maxPlayersPerTeam = basePlayersPerTeamLimit + (useJoker ? 1 : 0);
+    const team1NonJokerCount = team1Squad.filter(player => player !== jokerPlayer).length;
+    const team2NonJokerCount = team2Squad.filter(player => player !== jokerPlayer).length;
+    const canPickSquads =
+        !!team1.trim() &&
+        !!team2.trim() &&
+        !!oversInput.trim() &&
+        Number(oversInput) > 0 &&
+        !!totalPlayersInput.trim() &&
+        totalPlayers > 1 &&
+        !isOddTotalPlayers;
 
     const getTeamLabel = (teamName: string, fallback: string) => {
         const trimmed = teamName.trim();
@@ -140,16 +163,25 @@ export default function MatchSetup() {
         e.preventDefault();
         const missingFields: string[] = [];
         const overs = Number(oversInput);
-        const hasExactTeam1 = team1Squad.length === MAX_TEAM_SELECTION;
-        const hasExactTeam2 = team2Squad.length === MAX_TEAM_SELECTION;
-        const jokerSelectionInvalid = useJoker && (!jokerPlayer || !team1Squad.includes(jokerPlayer) || !team2Squad.includes(jokerPlayer));
+        const totalPlayersValue = Number(totalPlayersInput);
+        const isValidTotalPlayers = !!totalPlayersInput.trim() && totalPlayersValue > 1 && totalPlayersValue % 2 === 0;
+        const requiredNonJokerPerTeam = isValidTotalPlayers ? Math.floor(totalPlayersValue / 2) : 0;
+        const requiredPlayersPerTeam = requiredNonJokerPerTeam + (useJoker ? 1 : 0);
+        const team1SelectedNonJoker = team1Squad.filter(player => player !== jokerPlayer).length;
+        const team2SelectedNonJoker = team2Squad.filter(player => player !== jokerPlayer).length;
+        const team1HasJoker = !!jokerPlayer && team1Squad.includes(jokerPlayer);
+        const team2HasJoker = !!jokerPlayer && team2Squad.includes(jokerPlayer);
+        const jokerSelectionInvalid = useJoker && (!jokerPlayer || !team1HasJoker || !team2HasJoker);
+        const hasValidTeam1 = requiredNonJokerPerTeam > 0 && team1SelectedNonJoker === requiredNonJokerPerTeam && (!useJoker || team1HasJoker);
+        const hasValidTeam2 = requiredNonJokerPerTeam > 0 && team2SelectedNonJoker === requiredNonJokerPerTeam && (!useJoker || team2HasJoker);
         const nextErrors = {
             team1: !team1.trim(),
             team2: !team2.trim(),
             overs: !oversInput.trim() || !overs || overs <= 0,
+            totalPlayers: !isValidTotalPlayers,
             scorerPin: !state.scorerPassword.trim(),
-            team1Squad: !hasExactTeam1,
-            team2Squad: !hasExactTeam2,
+            team1Squad: !hasValidTeam1,
+            team2Squad: !hasValidTeam2,
             jokerPlayer: jokerSelectionInvalid
         };
 
@@ -159,12 +191,16 @@ export default function MatchSetup() {
         if (!team1.trim()) missingFields.push('Team 1 Name');
         if (!team2.trim()) missingFields.push('Team 2 Name');
         if (!oversInput.trim() || !overs || overs <= 0) missingFields.push('Total Overs');
+        if (!isValidTotalPlayers) missingFields.push('Total Players (even number)');
         if (!state.scorerPassword.trim()) missingFields.push('Scorer PIN');
-        if (!hasExactTeam1) missingFields.push('Team 1 Squad (exactly 11 players)');
-        if (!hasExactTeam2) missingFields.push('Team 2 Squad (exactly 11 players)');
-        if (jokerSelectionInvalid) missingFields.push('Joker Player selection');
+        if (!hasValidTeam1) missingFields.push(`${team1 || 'Team 1'} Squad (${requiredPlayersPerTeam} players required${useJoker ? `: Joker + ${requiredNonJokerPerTeam}` : ''})`);
+        if (!hasValidTeam2) missingFields.push(`${team2 || 'Team 2'} Squad (${requiredPlayersPerTeam} players required${useJoker ? `: Joker + ${requiredNonJokerPerTeam}` : ''})`);
+        if (jokerSelectionInvalid) missingFields.push('Joker Player selection (must be selected and present in both teams)');
 
         if (missingFields.length > 0) {
+            if (isValidTotalPlayers) {
+                setSelectionError(`Each team must have exactly ${requiredPlayersPerTeam} players${useJoker ? ` (Joker + ${requiredNonJokerPerTeam})` : ''} before proceeding to toss.`);
+            }
             setSetupError(`Please complete required fields: ${missingFields.join(', ')}`);
             return;
         }
@@ -193,16 +229,17 @@ export default function MatchSetup() {
 
         setShowMandatoryNote(false);
         setSetupError('');
+        setSelectionError('');
 
         dispatch({
             type: 'SET_TEAMS',
-            payload: { team1, team2, team1_squad: team1Squad, team2_squad: team2Squad, overs, noExtraRuns, jokerPlayer }
+            payload: { team1, team2, team1_squad: team1Squad, team2_squad: team2Squad, overs, totalPlayers, noExtraRuns, jokerPlayer }
         });
     };
 
     const assignPlayerTeam = (playerName: string, team: 1 | 2 | null) => {
         if (!canPickSquads) {
-            setSelectionError('Enter Team 1, Team 2, and Total Overs first.');
+            setSelectionError('Enter Team 1, Team 2, Total Overs, and an even Total Players value first.');
             return;
         }
 
@@ -214,8 +251,8 @@ export default function MatchSetup() {
                 setSelectionError('');
                 return;
             }
-            if (team1Squad.length >= MAX_TEAM_SELECTION) {
-                setSelectionError(`${team1 || 'Team 1'} already has ${MAX_TEAM_SELECTION} players. Remove one to add another.`);
+            if (team1NonJokerCount >= basePlayersPerTeamLimit) {
+                setSelectionError(`${team1 || 'Team 1'} already has ${basePlayersPerTeamLimit} players. Remove one to add another.`);
                 return;
             }
 
@@ -231,8 +268,8 @@ export default function MatchSetup() {
                 setSelectionError('');
                 return;
             }
-            if (team2Squad.length >= MAX_TEAM_SELECTION) {
-                setSelectionError(`${team2 || 'Team 2'} already has ${MAX_TEAM_SELECTION} players. Remove one to add another.`);
+            if (team2NonJokerCount >= basePlayersPerTeamLimit) {
+                setSelectionError(`${team2 || 'Team 2'} already has ${basePlayersPerTeamLimit} players. Remove one to add another.`);
                 return;
             }
 
@@ -267,9 +304,26 @@ export default function MatchSetup() {
 
     const handleTossSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (tossWinner && tossDecision) {
+        if (!tossWinner || !tossDecision) {
+            setTossValidationError('Please select who won the toss and what they decided to do.');
+            return;
+        }
+
+        const preservedStriker = batter1;
+        const preservedNonStriker = batter2;
+        const preservedBowler = bowler;
+
+        setTossValidationError('');
+        const hasSameTossSelection = state.toss.winner === tossWinner && state.toss.decision === tossDecision;
+        if (!hasSameTossSelection) {
             dispatch({ type: 'SET_TOSS', payload: { winner: tossWinner, decision: tossDecision } });
         }
+
+        // Preserve already selected lineup when navigating details <-> lineup.
+        setBatter1(preservedStriker);
+        setBatter2(preservedNonStriker);
+        setBowler(preservedBowler);
+        setTossStage('lineup');
     };
 
     const simulateToss = () => {
@@ -286,6 +340,26 @@ export default function MatchSetup() {
             setTossWinner(winner);
         }, 1500);
     };
+
+    useEffect(() => {
+        if (state.status !== 'TOSS') return;
+
+        setTossWinner(state.toss.winner || '');
+        setTossDecision((state.toss.decision as '' | 'bat' | 'bowl') || '');
+        setTossValidationError('');
+        setTossStage(state.toss.winner && state.toss.decision ? 'lineup' : 'details');
+    }, [state.status]);
+
+    useEffect(() => {
+        if (state.status !== 'TOSS') return;
+
+        const jokerPlayerName = state.config.jokerPlayer;
+        const isJokerSelectedAsOpener = !!jokerPlayerName && (batter1 === jokerPlayerName || batter2 === jokerPlayerName);
+
+        if (isJokerSelectedAsOpener && bowler === jokerPlayerName) {
+            setBowler('');
+        }
+    }, [state.status, state.config.jokerPlayer, batter1, batter2, bowler]);
 
     const startMatch = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -304,6 +378,7 @@ export default function MatchSetup() {
                     toss_winner: state.toss.winner,
                     toss_decision: state.toss.decision,
                     total_overs: state.config.overs,
+                    innings_timer_seconds: state.config.inningsTimerSeconds,
                     team1_squad: state.teams.team1_squad,
                     team2_squad: state.teams.team2_squad,
                     no_extra_runs: state.config.noExtraRuns,
@@ -352,8 +427,10 @@ export default function MatchSetup() {
         });
         const team1Label = getTeamLabel(team1, 'Team 1');
         const team2Label = getTeamLabel(team2, 'Team 2');
-        const team1MaxReached = team1Squad.length >= MAX_TEAM_SELECTION;
-        const team2MaxReached = team2Squad.length >= MAX_TEAM_SELECTION;
+        const team1MaxReached = team1NonJokerCount >= basePlayersPerTeamLimit;
+        const team2MaxReached = team2NonJokerCount >= basePlayersPerTeamLimit;
+        const team1LimitLabel = useJoker && jokerPlayer ? `Joker + ${basePlayersPerTeamLimit}` : String(basePlayersPerTeamLimit);
+        const team2LimitLabel = useJoker && jokerPlayer ? `Joker + ${basePlayersPerTeamLimit}` : String(basePlayersPerTeamLimit);
         const selectedPlayersCount = new Set([...team1Squad, ...team2Squad]).size;
         const canClearSelection = selectedPlayersCount >= 2;
 
@@ -413,6 +490,32 @@ export default function MatchSetup() {
                             <div className="flex-col gap-2">
                                 <label>Total Overs <span className="ms-required-star">*</span></label>
                                 <input className={showMandatoryNote && fieldErrors.overs ? 'ms-input-error' : ''} type="number" value={oversInput} onChange={e => setOversInput(e.target.value)} min={1} max={100} placeholder="Enter Overs" />
+                            </div>
+
+                            <div className="flex-col gap-2">
+                                <label>Total Players (Both Teams) <span className="ms-required-star">*</span></label>
+                                <input
+                                    className={showMandatoryNote && fieldErrors.totalPlayers ? 'ms-input-error' : ''}
+                                    type="number"
+                                    value={totalPlayersInput}
+                                    onChange={e => setTotalPlayersInput(e.target.value)}
+                                    min={2}
+                                    step={2}
+                                    placeholder="Enter Total Players"
+                                />
+                            </div>
+
+                            <div className="flex-col gap-2">
+                                <label>Max Selection Per Team</label>
+                                <div className="ms-info-banner">
+                                    {isOddTotalPlayers
+                                        ? 'Please enter an even number of total players.'
+                                        : basePlayersPerTeamLimit > 0
+                                        ? (useJoker && jokerPlayer
+                                            ? `Joker + ${basePlayersPerTeamLimit} players per team`
+                                            : `${basePlayersPerTeamLimit} players per team`)
+                                        : 'Enter total players to calculate team limit.'}
+                                </div>
                             </div>
 
                             <div className="ms-toggle-row">
@@ -485,13 +588,13 @@ export default function MatchSetup() {
                                                     ? team2Squad.length - 1
                                                     : team2Squad.length;
 
-                                                if (nextJoker && projectedTeam1 >= MAX_TEAM_SELECTION) {
-                                                    setSelectionError(`${team1 || 'Team 1'} already has ${MAX_TEAM_SELECTION} players. Remove one to assign Joker.`);
+                                                if (nextJoker && projectedTeam1 >= maxPlayersPerTeam) {
+                                                    setSelectionError(`${team1 || 'Team 1'} already has ${maxPlayersPerTeam} players. Remove one to assign Joker.`);
                                                     return;
                                                 }
 
-                                                if (nextJoker && projectedTeam2 >= MAX_TEAM_SELECTION) {
-                                                    setSelectionError(`${team2 || 'Team 2'} already has ${MAX_TEAM_SELECTION} players. Remove one to assign Joker.`);
+                                                if (nextJoker && projectedTeam2 >= maxPlayersPerTeam) {
+                                                    setSelectionError(`${team2 || 'Team 2'} already has ${maxPlayersPerTeam} players. Remove one to assign Joker.`);
                                                     return;
                                                 }
 
@@ -551,7 +654,7 @@ export default function MatchSetup() {
                                     title={team1Label.full}
                                 >
                                     {team1Label.short}
-                                </span>: <strong className="ms-chip-count-team1">{team1Squad.length}/{MAX_TEAM_SELECTION}</strong>
+                                </span>: <strong className="ms-chip-count-team1">{team1Squad.length}/{team1LimitLabel}</strong>
                             </button>
                             <button
                                 type="button"
@@ -565,7 +668,7 @@ export default function MatchSetup() {
                                     title={team2Label.full}
                                 >
                                     {team2Label.short}
-                                </span>: <strong className="ms-chip-count-team2">{team2Squad.length}/{MAX_TEAM_SELECTION}</strong>
+                                </span>: <strong className="ms-chip-count-team2">{team2Squad.length}/{team2LimitLabel}</strong>
                             </button>
                         </div>
 
@@ -595,7 +698,7 @@ export default function MatchSetup() {
                                     type="button"
                                     className="btn btn-danger tooltip-anchor ms-clear-btn"
                                     onClick={clearSquads}
-                                    data-tooltip={!canPickSquads ? 'Enter team names and overs first' : (canClearSelection ? 'Clear selection' : 'Select at least 2 players')}
+                                    data-tooltip={!canPickSquads ? 'Enter team names, overs, and total players first' : (canClearSelection ? 'Clear selection' : 'Select at least 2 players')}
                                     aria-label="Clear selection"
                                     disabled={!canPickSquads || !canClearSelection}
                                 >
@@ -723,6 +826,24 @@ export default function MatchSetup() {
     }
 
     if (state.status === 'TOSS') {
+        const goBackToMatchSetup = () => {
+            setTossValidationError('');
+            dispatch({ type: 'BACK_TO_SETUP' });
+        };
+
+        const goBackToTossScreen = () => {
+            setTossValidationError('');
+            setTossStage('details');
+        };
+
+        const handleTossHeaderBack = () => {
+            if (tossStage === 'lineup') {
+                goBackToTossScreen();
+                return;
+            }
+            goBackToMatchSetup();
+        };
+
         const isBattingFirst = (state.toss.winner === state.teams.team1 && state.toss.decision === 'bat') ||
             (state.toss.winner === state.teams.team2 && state.toss.decision === 'bowl') ? state.teams.team1 : state.teams.team2;
         const isBowlingFirst = isBattingFirst === state.teams.team1 ? state.teams.team2 : state.teams.team1;
@@ -731,23 +852,20 @@ export default function MatchSetup() {
         const jokerPlayerName = state.config.jokerPlayer;
         const isJokerSelectedAsOpener = !!jokerPlayerName && (batter1 === jokerPlayerName || batter2 === jokerPlayerName);
         const openingBowlerOptions = isJokerSelectedAsOpener && jokerPlayerName
-            ? Array.from(new Set([...bowlingFirstSquad, jokerPlayerName]))
+            ? bowlingFirstSquad.filter(playerName => playerName !== jokerPlayerName)
             : bowlingFirstSquad;
         const getPlayerOptionLabel = (playerName: string) => (
             jokerPlayerName && playerName === jokerPlayerName
                 ? `${playerName} (Joker)`
                 : playerName
         );
-        const goBackToSetup = () => {
-            dispatch({ type: 'BACK_TO_SETUP' });
-        };
 
         return (
             <div className="glass-panel ms-toss-panel">
                 <div className="ms-toss-header">
-                    <button type="button" className="btn btn-secondary ms-toss-back-btn" onClick={goBackToSetup}>
+                    <button type="button" className="btn btn-secondary ms-toss-back-btn" onClick={handleTossHeaderBack}>
                         <ArrowLeft size={16} />
-                        Back to match setup
+                        {tossStage === 'lineup' ? 'Back to Toss screen' : 'Back to match setup'}
                     </button>
                     <h2 className="text-gradient ms-toss-title">Coin Toss</h2>
                 </div>
@@ -758,7 +876,7 @@ export default function MatchSetup() {
                     <span className="ms-toss-team-name">{state.teams.team2}</span>
                 </div>
 
-                {!state.toss.winner ? (
+                {tossStage === 'details' ? (
                     <div className="flex-col gap-6">
                         <div className="flex-col gap-4 flex-center ms-toss-flip-block">
                             <div className={`ms-toss-coin-wrap ${isTossing ? 'is-spinning' : ''} ${tossResult ? 'has-result' : ''}`}>
@@ -785,14 +903,20 @@ export default function MatchSetup() {
                                         <button
                                             type="button"
                                             className={`ms-toss-team-btn ${tossWinner === state.teams.team1 ? 'is-selected' : ''}`}
-                                            onClick={() => setTossWinner(state.teams.team1)}
+                                            onClick={() => {
+                                                setTossWinner(state.teams.team1);
+                                                setTossValidationError('');
+                                            }}
                                         >
                                             {state.teams.team1}
                                         </button>
                                         <button
                                             type="button"
                                             className={`ms-toss-team-btn ${tossWinner === state.teams.team2 ? 'is-selected' : ''}`}
-                                            onClick={() => setTossWinner(state.teams.team2)}
+                                            onClick={() => {
+                                                setTossWinner(state.teams.team2);
+                                                setTossValidationError('');
+                                            }}
                                         >
                                             {state.teams.team2}
                                         </button>
@@ -804,7 +928,10 @@ export default function MatchSetup() {
                                         <button
                                             type="button"
                                             className={`ms-toss-team-btn ms-toss-decision-btn ${tossDecision === 'bat' ? 'is-selected' : ''}`}
-                                            onClick={() => setTossDecision('bat')}
+                                            onClick={() => {
+                                                setTossDecision('bat');
+                                                setTossValidationError('');
+                                            }}
                                         >
                                             <svg width="20" height="20" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                                                 <defs>
@@ -842,7 +969,10 @@ export default function MatchSetup() {
                                         <button
                                             type="button"
                                             className={`ms-toss-team-btn ms-toss-decision-btn ${tossDecision === 'bowl' ? 'is-selected' : ''}`}
-                                            onClick={() => setTossDecision('bowl')}
+                                            onClick={() => {
+                                                setTossDecision('bowl');
+                                                setTossValidationError('');
+                                            }}
                                         >
                                             <svg width="20" height="20" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                                                 <defs>
@@ -868,9 +998,12 @@ export default function MatchSetup() {
                                         </button>
                                     </div>
                                 </div>
-                                <button type="submit" className="btn btn-primary ms-btn-top-sm" disabled={!tossWinner || !tossDecision}>
+                                <button type="submit" className="btn btn-primary ms-btn-top-sm">
                                     Confirm Toss
                                 </button>
+                                {tossValidationError && (
+                                    <div className="ms-error-banner ms-error-banner-top">{tossValidationError}</div>
+                                )}
                             </form>
                         </div>
                     </div>
