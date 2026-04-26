@@ -339,45 +339,27 @@ export default function DetailedScorecard({ match, innings, balls }: DetailedSco
                                     <div className="ds-over-balls">
                                         {osBalls.map((b, i) => {
                                             let label = b.runs.toString();
-                                            let ballBg = "rgba(255,255,255,0.05)";
-                                            let ballColor = "white";
+                                            let bClass = '';
 
-                                            if (b.is_wicket) { 
-                                                ballBg = "var(--accent-danger)"; 
-                                                ballColor = "white"; 
-                                                label = "W"; 
-                                            } else if (b.runs === 4) { 
-                                                ballBg = "rgba(52, 152, 219, 0.2)"; 
-                                                ballColor = "var(--accent-primary)"; 
-                                            } else if (b.runs === 6) { 
-                                                ballBg = "rgba(155, 89, 182, 0.2)"; 
-                                                ballColor = "#9b59b6"; 
-                                            } else if (b.extra_type === 'wide') { 
-                                                ballBg = "rgba(241, 196, 15, 0.1)"; 
-                                                ballColor = "#f1c40f"; 
-                                                label = b.runs + "w";
-                                            } else if (b.extra_type === 'no_ball') { 
-                                                ballBg = "rgba(231, 76, 60, 0.1)"; 
-                                                ballColor = "#e74c3c"; 
-                                                label = b.runs + "n";
+                                            if (b.is_wicket) {
+                                                bClass = 'wicket';
+                                                label = 'W';
+                                            } else if (b.runs === 4) {
+                                                bClass = 'run-4';
+                                            } else if (b.runs === 6) {
+                                                bClass = 'run-6';
+                                            } else if (b.extra_type === 'wide') {
+                                                bClass = 'extra';
+                                                label = 'Wd';
+                                            } else if (b.extra_type === 'no_ball') {
+                                                bClass = 'extra';
+                                                label = 'Nb';
                                             }
 
                                             return (
-                                                <span key={i} title={b.label} className="ds-over-ball" style={{ 
-                                                    width: "28px", 
-                                                    height: "28px", 
-                                                    display: "flex", 
-                                                    alignItems: "center", 
-                                                    justifyContent: "center", 
-                                                    borderRadius: "50%", 
-                                                    background: ballBg, 
-                                                    color: ballColor,
-                                                    fontSize: "0.7rem",
-                                                    fontWeight: 800,
-                                                    border: "1px solid rgba(255,255,255,0.1)"
-                                                }}>
+                                                <div key={i} className={`ball-bubble ${bClass}`}>
                                                     {label}
-                                                </span>
+                                                </div>
                                             );
                                         })}
                                     </div>

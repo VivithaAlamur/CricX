@@ -4,6 +4,20 @@ import { useMatch } from '../store/MatchContext';
 import { ArrowLeft, RefreshCcw, ClipboardList, Users, Flag, AlertTriangle } from 'lucide-react';
 import PlayerCardSelector from '../components/PlayerCardSelector';
 
+const SETUP_DRAFT_STORAGE_KEY = 'match_setup_draft';
+
+interface MatchSetupDraft {
+    team1: string;
+    team2: string;
+    team1Squad: string[];
+    team2Squad: string[];
+    oversInput: string;
+    totalPlayersInput: string;
+    noExtraRuns: boolean;
+    useJoker: boolean;
+    jokerPlayer: string | null;
+}
+
 function SetupControlIcon() {
     return (
         <svg
@@ -69,6 +83,7 @@ function ManagePlayersIcon() {
 
 export default function MatchSetup() {
     const { state, dispatch } = useMatch();
+    const [hasHydratedSetupDraft, setHasHydratedSetupDraft] = useState(false);
 
     const [team1, setTeam1] = useState('');
     const [team2, setTeam2] = useState('');
@@ -115,6 +130,28 @@ export default function MatchSetup() {
             state.teams.team1_squad.length > 0 ||
             state.teams.team2_squad.length > 0;
 
+        if (!hasExistingSetupData) {
+            const savedDraftRaw = localStorage.getItem(SETUP_DRAFT_STORAGE_KEY);
+            if (savedDraftRaw) {
+                try {
+                    const savedDraft = JSON.parse(savedDraftRaw) as MatchSetupDraft;
+                    setTeam1(savedDraft.team1 || '');
+                    setTeam2(savedDraft.team2 || '');
+                    setTeam1Squad(Array.isArray(savedDraft.team1Squad) ? savedDraft.team1Squad : []);
+                    setTeam2Squad(Array.isArray(savedDraft.team2Squad) ? savedDraft.team2Squad : []);
+                    setOversInput(savedDraft.oversInput || '');
+                    setTotalPlayersInput(savedDraft.totalPlayersInput || '');
+                    setNoExtraRuns(!!savedDraft.noExtraRuns);
+                    setUseJoker(!!savedDraft.useJoker);
+                    setJokerPlayer(savedDraft.jokerPlayer || null);
+                    setHasHydratedSetupDraft(true);
+                    return;
+                } catch {
+                    localStorage.removeItem(SETUP_DRAFT_STORAGE_KEY);
+                }
+            }
+        }
+
         setTeam1(state.teams.team1 || '');
         setTeam2(state.teams.team2 || '');
         setTeam1Squad(state.teams.team1_squad || []);
@@ -124,7 +161,39 @@ export default function MatchSetup() {
         setNoExtraRuns(!!state.config.noExtraRuns);
         setUseJoker(!!state.config.jokerPlayer);
         setJokerPlayer(state.config.jokerPlayer || null);
+        setHasHydratedSetupDraft(true);
     }, [state.status]);
+
+    useEffect(() => {
+        if (state.status !== 'SETUP') return;
+        if (!hasHydratedSetupDraft) return;
+
+        const draft: MatchSetupDraft = {
+            team1,
+            team2,
+            team1Squad,
+            team2Squad,
+            oversInput,
+            totalPlayersInput,
+            noExtraRuns,
+            useJoker,
+            jokerPlayer
+        };
+
+        localStorage.setItem(SETUP_DRAFT_STORAGE_KEY, JSON.stringify(draft));
+    }, [
+        state.status,
+        hasHydratedSetupDraft,
+        team1,
+        team2,
+        team1Squad,
+        team2Squad,
+        oversInput,
+        totalPlayersInput,
+        noExtraRuns,
+        useJoker,
+        jokerPlayer
+    ]);
 
     const [batter1, setBatter1] = useState('');
     const [batter2, setBatter2] = useState('');
@@ -230,6 +299,7 @@ export default function MatchSetup() {
         setShowMandatoryNote(false);
         setSetupError('');
         setSelectionError('');
+        localStorage.removeItem(SETUP_DRAFT_STORAGE_KEY);
 
         dispatch({
             type: 'SET_TEAMS',
@@ -520,8 +590,8 @@ export default function MatchSetup() {
 
                             <div className="ms-toggle-row">
                                 <div className="ms-toggle-field">
-                                    <label className="ms-toggle-label">No Extra Runs</label>
-                                    <div className="ms-yesno-toggle" role="group" aria-label="No extra runs">
+                                    <label className="ms-toggle-label">Extra Runs Allowed?</label>
+                                    <div className="ms-yesno-toggle" role="group" aria-label="Extra runs allowed">
                                         <button
                                             type="button"
                                             className={`ms-yesno-btn ${noExtraRuns ? 'is-active' : ''}`}

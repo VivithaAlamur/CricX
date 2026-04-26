@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Trophy } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useMatch } from '../store/MatchContext';
 import DetailedScorecard from '../components/DetailedScorecard';
@@ -50,6 +50,8 @@ export default function MatchSummary() {
     const inningsByTeam = new Map(innings.map((inn: any) => [inn.team_name, inn]));
     const team1Innings = inningsByTeam.get(match.team1_name);
     const team2Innings = inningsByTeam.get(match.team2_name);
+    const isHistoryView = Boolean(matchId);
+    const playedOn = match.created_at ? new Date(match.created_at).toLocaleString(undefined, { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
 
     const getInningsDurationFromBalls = (inningsNumber: number) => {
         const inningsEntry = innings.find((inn: any) => Number(inn.innings_number) === inningsNumber);
@@ -121,23 +123,26 @@ export default function MatchSummary() {
     return (
         <div className="flex-col gap-6 msu-shell">
             <div className="glass-panel msu-hero">
-                <div className="msu-back-row">
-                    <button
-                        type="button"
-                        className="btn btn-secondary msu-top-back-btn"
-                        onClick={handleBack}
-                        aria-label="Back"
-                        title="Back"
-                    >
-                        <ArrowLeft size={18} />
-                    </button>
-                </div>
+                {(isHistoryView || match.status !== 'FINISHED') && (
+                    <div className="msu-back-row">
+                        <button
+                            type="button"
+                            className="btn btn-secondary msu-top-back-btn"
+                            onClick={handleBack}
+                            aria-label="Back"
+                            title="Back"
+                        >
+                            <ArrowLeft size={18} />
+                        </button>
+                    </div>
+                )}
                 <div className="msu-header-row">
                     <div>
                         <h2 className="text-gradient msu-title">
-                            {match.status === 'FINISHED' ? 'Match Finished' : 'Match In Progress'}
+                            {isHistoryView ? 'Match Summary' : (match.status === 'FINISHED' ? 'Match Finished' : 'Match In Progress')}
                         </h2>
                         <p className="msu-subtitle">{match.team1_name} vs {match.team2_name}</p>
+                        {playedOn && <p className="msu-subtitle">Match Played on: {playedOn}</p>}
                     </div>
                     <span className={`msu-status-pill ${match.status === 'FINISHED' ? 'is-finished' : 'is-live'}`}>
                         {match.status === 'FINISHED' ? 'Final' : 'Live'}
@@ -160,11 +165,17 @@ export default function MatchSummary() {
 
                 <div className="msu-score-grid">
                     <div className="glass-card msu-score-card is-team1">
-                        <p className="msu-score-team">{match.team1_name}</p>
+                        <p className="msu-score-team">
+                            {winner === match.team1_name && <Trophy size={16} style={{ color: 'var(--accent-warning, gold)', marginRight: '6px', verticalAlign: 'middle' }} />}
+                            {match.team1_name}
+                        </p>
                         <p className="msu-score-value">{formatInningsScore(team1Innings)}</p>
                     </div>
                     <div className="glass-card msu-score-card is-team2">
-                        <p className="msu-score-team">{match.team2_name}</p>
+                        <p className="msu-score-team">
+                            {winner === match.team2_name && <Trophy size={16} style={{ color: 'var(--accent-warning, gold)', marginRight: '6px', verticalAlign: 'middle' }} />}
+                            {match.team2_name}
+                        </p>
                         <p className="msu-score-value">{formatInningsScore(team2Innings)}</p>
                     </div>
                 </div>
@@ -176,14 +187,16 @@ export default function MatchSummary() {
                     <p className="msu-timer-row">Innings 2 Total Time: <strong>{formatHhMmSs(innings2TotalTime)}</strong></p>
                 </div>
 
-                <div className="msu-actions-row">
-                    <button type="button" className="btn btn-secondary msu-action-btn" onClick={handleStartRematch}>
-                        Start Rematch (Same Squads)
-                    </button>
-                    <button type="button" className="btn btn-primary msu-action-btn" onClick={handleStartNewMatch}>
-                        Start New Match
-                    </button>
-                </div>
+                {!isHistoryView && (
+                    <div className="msu-actions-row">
+                        <button type="button" className="btn btn-secondary msu-action-btn" onClick={handleStartRematch}>
+                            Start Rematch (Same Squads)
+                        </button>
+                        <button type="button" className="btn btn-primary msu-action-btn" onClick={handleStartNewMatch}>
+                            Start New Match
+                        </button>
+                    </div>
+                )}
             </div>
 
             <DetailedScorecard match={match} innings={innings} balls={balls} />
