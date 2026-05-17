@@ -114,7 +114,7 @@ export default function LiveScoring() {
     const battingSquad = battingTeam === state.teams.team1 ? state.teams.team1_squad : state.teams.team2_squad;
     const bowlingSquad = bowlingTeam === state.teams.team1 ? state.teams.team1_squad : state.teams.team2_squad;
     const battingPlayerCount = Math.max(1, battingSquad.length || state.config.totalPlayers || 11);
-    const allOutWicketLimit = Math.max(1, battingPlayerCount - 1);
+    const allOutWicketLimit = Math.max(1, battingPlayerCount);
 
     const nextBattingSquad = nextBattingTeam === state.teams.team1 ? state.teams.team1_squad : state.teams.team2_squad;
     const nextBowlingSquad = nextBowlingTeam === state.teams.team1 ? state.teams.team1_squad : state.teams.team2_squad;
